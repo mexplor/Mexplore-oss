@@ -1,0 +1,75 @@
+# DSH bundle patch for dsh-mexplore.
+#
+# Two ways to give an agent long-term memory; turn exactly one on in Plugins:
+#   memory-graph-direct  (on)   the main agent gets the memory tools itself
+#   memory-graph-agent   (off)  the main agent gets one `memory_agent` tool that
+#                               runs a separate agent on the presets below
+#   memory-graph-history (on, but only loads with memory-graph-agent)
+#                               history_* tools to import past conversations;
+#                               with the direct row on, its history_import_help
+#                               tool tells the user how to switch instead
+# Independent of that choice:
+#   memory-graph-ui      (on)   read-only data routes for the "Memory graph"
+#                               sidebar panel (/mexplor/api/...); it shows the
+#                               graph of whichever row above is on
+# Both default to the graph at ~/.dsh/memory-graph with a 30-line index. To
+# change that, override the row by id in the profile's cordis.patch.yml, e.g.
+#   - id: memory-graph-direct
+#     config: { graphRoot: ~/notes/memory, maxIndexEntries: 30 }
+# (an override replaces the row's whole config).
+- insert:
+    - id: memory-graph-direct
+      name: dsh-mexplore/direct
+      config: {}
+    - id: memory-graph-agent
+      name: dsh-mexplore/agent
+      disabled: true
+      config: {}
+    # History import (「导入历史」): loads only while memory-graph-agent is on,
+    # because the memory agent is its only writer. Writes into that row's graph.
+    - id: memory-graph-history
+      name: dsh-mexplore/history
+      config: {}
+    # Bare package name on purpose: DSH serves a package's browser half (the
+    # panel) only for a row named by the package itself. `panel: true` makes
+    # the package root run the panel's data routes instead of the core plugin.
+    - id: memory-graph-ui
+      name: dsh-mexplore
+      config:
+        panel: true
+    - id: preset-mexplor-memory-read
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: mexplor-memory-read
+        name: Memory agent (read)
+        description: Used by memory_agent to read long-term memory. Not a mode for normal chats; its tools refuse outside a memory_agent call.
+        order: 900
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: You are the memory agent for a filesystem-backed knowledge graph. You can only use your memory tools. Answer from tool results only, and end every turn with the single JSON reply object the delegation asks for.
+              complete: true
+              includeRuntimeContext: false
+          - id: memory-graph-agent-tools
+            name: dsh-mexplore/agent-tools
+            config:
+              authority: read
+    - id: preset-mexplor-memory-manage
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: mexplor-memory-manage
+        name: Memory agent (manage)
+        description: Used by memory_agent to read and write long-term memory. Not a mode for normal chats; its tools refuse outside a memory_agent call.
+        order: 901
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: You are the memory agent for a filesystem-backed knowledge graph. You can only use your memory tools. Answer from tool results only, and end every turn with the single JSON reply object the delegation asks for.
+              complete: true
+              includeRuntimeContext: false
+          - id: memory-graph-agent-tools
+            name: dsh-mexplore/agent-tools
+            config:
+              authority: manage

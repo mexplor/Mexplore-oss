@@ -1,0 +1,1 @@
+{"meta": {"title": "Mexplore · 记忆代理", "description": "主 agent 只拿到一个 memory_agent 工具，每次调用由一个只有记忆工具的独立 agent 去读写，返回核对过引用的答案。先关掉直接挂载的记忆工具。"}}

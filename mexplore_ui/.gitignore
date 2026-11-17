@@ -1,0 +1,5 @@
+node_modules/
+# dist/ IS committed: `mexplore-ui/plugin` ships it as the UI bundle, and a git
+# install runs no build (and must not: pacote's nested npm install cannot be
+# relied on to have vite). A freshness test in test/freshness.test.ts rebuilds
+# into a temp dir and diffs against it, so a stale commit is caught in CI.

@@ -1,0 +1,270 @@
+#!/usr/bin/env node
+// provenance <node-id> [--json] [-n N] — read a node's write-provenance log.
+//
+// Every graph write made through the memory tools appends one JSON line to
+// $GRAPH_ROOT/.provenance/<node-id>.jsonl (#317): {v,ts,op,actor,host,session,
+// reason?,call?,peer?,file?,type?}. This helper reads that file and NOTHING
+// else — it is the read side of the contract, so it writes no byte, never
+// touches .access/, and never takes a lock.
+//
+//   ts       when the write's clock said so
+//   op       the state transition (create, update, attach, edge, supersede, …)
+//   host     dsh | opencode | unknown — which harness made the write
+//   actor    chat | import | unknown
+//   session  the ROOT chat that wrote, or `— <reason>` when there was no proof
+//   detail   peer=/file=/type=, only when the line carries them
+//   call     the host's id for that tool call, when it recorded one
+//
+// The sidecar lives at GRAPH LEVEL, so an ARCHIVED node id still works: its
+// lines stay where they are (.provenance/<id>.jsonl) and nothing here looks
+// for the node directory. A missing file is not an error — it means nothing
+// recorded that operation, which is a normal answer for an untouched or
+// helper-written node.
+//
+// A torn or unparseable line (a crash mid-append) is skipped with a warning on
+// stderr; the rest of the file is still shown.
+'use strict'
+const fs = require('fs')
+const path = require('path')
+
+// Exactly the ULIDs the writers accept (also blocks path traversal).
+const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/
+const PROVENANCE_DIR = '.provenance'
+// A cell wider than this is truncated with an ellipsis: a session id may be 200
+// chars, and one such row must not make the table unreadable. --json is the
+// untruncated view.
+const CELL_MAX = 40
+
+const usage = () => {
+  process.stderr.write('usage: provenance <node-id> [--json] [-n N]\n')
+  process.exit(1)
+}
+
+let json = false
+let limit = undefined
+let id = undefined
+const args = process.argv.slice(2)
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i]
+  if (arg === '--json') { json = true; continue }
+  if (arg === '-n') {
+    const value = args[i + 1] ?? ''
+    if (!/^[0-9]+$/.test(value) || Number(value) < 1) {
+      process.stderr.write(`error: -n must be a positive integer: ${value}\n`)
+      process.exit(1)
+    }
+    limit = Number(value)
+    i++
+    continue
+  }
+  if (arg.startsWith('-')) usage()
+  if (id !== undefined) usage()
+  id = arg
+}
+if (id === undefined) usage()
+if (!ULID_RE.test(id)) {
+  process.stderr.write(`error: invalid Node ID: ${id}\n`)
+  process.exit(1)
+}
+
+const ROOT = process.env.GRAPH_ROOT || './memories'
+const folder = path.join(ROOT, PROVENANCE_DIR)
+const file = path.join(folder, `${id}.jsonl`)
+
+// Refuse a redirecting directory or file. Both are planted redirects, not a
+// log this helper can trust to be the one the engine writes — so neither is
+// followed, and both are an error rather than "no provenance recorded".
+const lstatOrUndefined = (target) => {
+  try {
+    return fs.lstatSync(target)
+  } catch (error) {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return undefined
+    throw error
+  }
+}
+
+let dirStat
+let fileStat
+try {
+  dirStat = lstatOrUndefined(folder)
+  if (dirStat !== undefined && dirStat.isSymbolicLink()) {
+    process.stderr.write(`error: refusing to follow a symlinked provenance folder: ${folder}\n`)
+    process.exit(1)
+  }
+  if (dirStat !== undefined && !dirStat.isDirectory()) {
+    process.stderr.write(`error: refusing to read a non-directory provenance folder: ${folder}\n`)
+    process.exit(1)
+  }
+  if (dirStat === undefined) {
+    process.stdout.write('no provenance recorded\n')
+    process.exit(0)
+  }
+  fileStat = lstatOrUndefined(file)
+  if (fileStat === undefined) {
+    process.stdout.write('no provenance recorded\n')
+    process.exit(0)
+  }
+  if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
+    process.stderr.write(`error: refusing to read a non-regular provenance file: ${file}\n`)
+    process.exit(1)
+  }
+} catch (error) {
+  process.stderr.write(`error: cannot inspect ${folder}: ${error.message}\n`)
+  process.exit(1)
+}
+
+// TOCTOU, documented rather than closed (issue #321, item 5): the lstat checks
+// above and this read are two separate syscalls, so a leaf swapped for a symlink
+// between them WOULD be followed here. The writer closes the same window at its
+// end with `O_NOFOLLOW` (see `appendBookkeeping` in graph.js); this read side
+// deliberately does not — the exposure needs a local process that can already
+// plant links inside the graph root, and a read-only view earns no extra syscall
+// path. Hardening would mean opening with O_NOFOLLOW and reading the descriptor.
+let text
+try {
+  text = fs.readFileSync(file, 'utf8')
+} catch (error) {
+  process.stderr.write(`error: cannot read ${file}: ${error.message}\n`)
+  process.exit(1)
+}
+
+/** The file's lines, oldest-first, with a torn or unparseable one skipped. */
+const records = []
+const raws = []
+const rawLines = text.split('\n')
+for (let i = 0; i < rawLines.length; i++) {
+  const raw = rawLines[i]
+  // The trailing newline of a healthy file leaves one empty tail: not a torn
+  // line, and not worth a warning.
+  if (raw.length === 0) continue
+  let record
+  try {
+    record = JSON.parse(raw)
+  } catch {
+    process.stderr.write(`warning: skipping unparseable line ${i + 1} of ${file} (a torn append)\n`)
+    continue
+  }
+  if (record === null || typeof record !== 'object' || Array.isArray(record)) {
+    process.stderr.write(`warning: skipping line ${i + 1} of ${file} (not a JSON object)\n`)
+    continue
+  }
+  records.push(record)
+  raws.push(raw)
+}
+
+// Appends are lock-free, so the file is *nearly* in time order. Sorting stably
+// by the ISO stamp — which sorts lexicographically — makes "oldest first" true
+// even across a racing pair, while lines sharing one ts (a call's create +
+// supersede) keep the order they were written in.
+const order = records
+  .map((record, index) => ({ record, raw: raws[index], index }))
+  .sort((a, b) => {
+    const left = typeof a.record.ts === 'string' ? a.record.ts : ''
+    const right = typeof b.record.ts === 'string' ? b.record.ts : ''
+    return left < right ? -1 : left > right ? 1 : a.index - b.index
+  })
+
+const shown = limit === undefined ? order : order.slice(Math.max(0, order.length - limit))
+if (shown.length === 0) {
+  process.stdout.write('no provenance recorded\n')
+  process.exit(0)
+}
+
+if (json) {
+  for (const entry of shown) process.stdout.write(`${entry.raw}\n`)
+  process.exit(0)
+}
+
+// A sidecar field is UNTRUSTED terminal input: an attachment filename may hold
+// a newline, a carriage return or an escape sequence, so printing it raw would
+// let one line forge extra rows or run a terminal control sequence. C0 (and
+// DEL) and C1 are therefore escaped before anything measures or truncates the
+// cell — the escape happens on the raw text, so `\n` never reaches stdout as a
+// real newline and no width is computed over invisible characters. `--json`
+// stays raw: a JSON consumer gets exactly the bytes the engine wrote.
+const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f]/g
+const escapeControls = (text) =>
+  text.replace(CONTROL_RE, (character) => {
+    if (character === '\n') return '\\n'
+    if (character === '\r') return '\\r'
+    if (character === '\t') return '\\t'
+    return `\\x${character.charCodeAt(0).toString(16).padStart(2, '0')}`
+  })
+
+// Truncation must not leave HALF an escape behind (`\x1b` cut to `\x`): the
+// dangling fragment is dropped, so the ellipsis follows the last whole escape.
+const stripPartialEscape = (text) => text.replace(/(?:\\x[0-9a-fA-F]?|\\)$/, '')
+
+/**
+ * One table cell. Only a string or a number can be printed — anything else
+ * (an object, an array, a boolean) is a malformed field the engine never
+ * writes, and `String()` on some of those throws, so it renders as `?` rather
+ * than taking the whole table down with it.
+ */
+const cell = (value) => {
+  if (value === undefined || value === null) return '—'
+  const text = typeof value === 'string' ? value : typeof value === 'number' ? String(value) : undefined
+  if (text === undefined) return '?'
+  const escaped = escapeControls(text)
+  if (escaped.length === 0) return '—'
+  if (escaped.length <= CELL_MAX) return escaped
+  return `${stripPartialEscape(escaped.slice(0, CELL_MAX - 1))}…`
+}
+
+// `session` is the headline of a line: a proven root id, or why there is none.
+// The reason goes through the same formatter — it is a string from the file
+// too, and a forged one must not be able to break out of its row either.
+const sessionCell = (record) => {
+  const session = record.session
+  if (typeof session === 'string' && session.length > 0) return cell(session)
+  if (session !== null && session !== undefined) return cell(session)
+  const reason = cell(record.reason)
+  return reason === '—' ? '—' : `— ${reason}`
+}
+
+// peer/file/type only exist on the ops that touch a second node or a file.
+const detailCell = (record) => {
+  const parts = []
+  if (record.peer !== undefined && record.peer !== null) parts.push(`peer=${cell(record.peer)}`)
+  if (record.file !== undefined && record.file !== null) parts.push(`file=${cell(record.file)}`)
+  if (record.type !== undefined && record.type !== null) parts.push(`type=${cell(record.type)}`)
+  return parts.length === 0 ? '' : parts.join(' ')
+}
+
+const header = ['ts', 'op', 'host', 'actor', 'session', 'detail', 'call']
+const rows = shown.map(({ record }) => [
+  cell(record.ts),
+  cell(record.op),
+  cell(record.host),
+  cell(record.actor),
+  sessionCell(record),
+  detailCell(record),
+  cell(record.call),
+])
+
+// Widths over header + rows; the detail column collapses entirely when no
+// shown line carries one, so a plain create/update log has no empty gutter.
+// Computed with a loop, never `Math.max(...rows.map(...))`: a retained history
+// is append-only and unpruned, and spreading hundreds of thousands of lengths
+// into one call exceeds the argument limit and throws before anything prints.
+const visible = header.map((_, column) => rows.some((row) => row[column] !== ''))
+const widths = []
+for (let column = 0; column < header.length; column++) {
+  let width = visible[column] ? header[column].length : 0
+  if (visible[column]) {
+    for (const row of rows) {
+      const length = row[column].length
+      if (length > width) width = length
+    }
+  }
+  widths.push(width)
+}
+const render = (row) =>
+  row
+    .map((value, column) => (visible[column] ? value.padEnd(widths[column]) : ''))
+    .filter((_, column) => visible[column])
+    .join('  ')
+    .replace(/\s+$/, '')
+
+process.stdout.write(`${render(header)}\n`)
+for (const row of rows) process.stdout.write(`${render(row)}\n`)

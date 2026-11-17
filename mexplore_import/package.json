@@ -1,0 +1,15 @@
+{
+  "name": "mexplore-import",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "History import core shared by every Mexplore harness: steps, confirmations, scan, redaction, estimate, batches, snapshots and rollback. Depends on node: modules only; dsh_plugin carries a generated copy in lib/import/.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

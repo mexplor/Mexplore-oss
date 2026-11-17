@@ -1,0 +1,9 @@
+{
+  "source": "mexplore_graph/src",
+  "generatedBy": "scripts/sync-vendored.mjs",
+  "files": {
+    "graph.js": "432a238aec67827d4caa6d6e915f3b20d4fd87326d7c27cbe4260cbb590406c2",
+    "index.js": "d3330075706848fa9be246ba23d69fcbda36da1e2a1012df4f173118e728daa8",
+    "tool.js": "075d0d270e6924275e54d70dde913d1559feb0ff997754cd0629d5bfcd15a017"
+  }
+}

@@ -1,0 +1,381 @@
+{
+ "generated_by": "Synthetic history parity fixtures (scripts/history-golden.py)",
+ "now_epoch": 1780935000.0,
+ "config": {
+  "excludeProjectPrefixes": [
+   "-private-"
+  ],
+  "idleGapHours": 2,
+  "minUnitChars": 300,
+  "assistantCap": 2000,
+  "assistantCapTight": 667,
+  "userCap": 4000,
+  "maxEvidence": 6,
+  "runConfigBudget": 60000
+ },
+ "units": [
+  {
+   "unit_id": "u-866ceb949f87855d66ef86ae",
+   "session_id": "s1",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-01T09:00:00+08:00",
+   "ended_at": "2026-06-01T09:17:00+08:00",
+   "day": "2026-06-01",
+   "part": 1,
+   "parts": 2,
+   "cap_stage": "assistant_667+split",
+   "turn_ids": [
+    "s1-001",
+    "s1-005",
+    "s1-008"
+   ],
+   "text": "Conversation dated 2026-06-01 (Claude Code session s1 in /Users/someone/Code/repo, part 1 of that session, part 1/2 of that day)\nUSER: Plan the deploy for the api service; w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31 w32 w33 w34 w35 w36 w37 w38 w39 w40 w41 w42 w43 w44 w45 w46 w47 w48 w49 w50 w51 w52 w53 w54 w55 w56 w57 w58 w59\nASSISTANT: We deploy staging from dev first. x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60 x61 x62 x63 x64 x65 x66 x67 x68 x69 x70 x71 x72 x73 x74 x75 x76 x77 x78 x79\nUSER: Use key [REDACTED:api_token] and password=[REDACTED:credential_assignment] please; call [REDACTED:phone]\nASSISTANT: Stored notes in /Users/someone/Code/repo/docs/DeployPlan_2026-06-01.md commit 0123456789abcdef0123456789abcdef01234567 y0 y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 y11 y12 y13 y14 y15 y16 y17 y18 y19 y20 y21 y22 y23 y24 y25 y26 y27 y28 y29 y30 y31 y32 y33 y34 y35 y36 y37 y38 y39\nUSER: /review the deploy plan\nASSISTANT: Reviewed: r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15 r16 r17 r18 r19 r20 r21 r22 r23 r24 r25 r26 r27 r28 r29",
+   "schema": "mexplor-unit-v1",
+   "_entries": 6,
+   "_run_config_bytes": 3916
+  },
+  {
+   "unit_id": "u-6af2e9b549951934e3e4f6c4",
+   "session_id": "s1",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-01T09:18:00+08:00",
+   "ended_at": "2026-06-01T09:18:40+08:00",
+   "day": "2026-06-01",
+   "part": 2,
+   "parts": 2,
+   "cap_stage": "assistant_667+split",
+   "turn_ids": [
+    "s1-014"
+   ],
+   "text": "Conversation dated 2026-06-01 (Claude Code session s1 in /Users/someone/Code/repo, part 1 of that session, part 2/2 of that day)\nUSER: 看一下这张图 中文内容和 emoji 😀🚀 中0 中1 中2 中3 中4 中5 中6 中7 中8 中9 中10 中11 中12 中13 中14 中15 中16 中17 中18 中19 中20 中21 中22 中23 中24 中25 中26 中27 中28 中29 中30 中31 中32 中33 中34 中35 中36 中37 中38 中39\n[media:image]\nASSISTANT: 图里是部署拓扑。 图0 图1 图2 图3 图4 图5 图6 图7 图8 图9 图10 图11 图12 图13 图14 图15 图16 图17 图18 图19 图20 图21 图22 图23 图24 图25 图26 图27 图28 图29 图30 图31 图32 图33 图34 图35 图36 图37 图38 图39 图40 图41 图42 图43 图44 图45 图46 图47 图48 图49",
+   "schema": "mexplor-unit-v1",
+   "_entries": 2,
+   "_run_config_bytes": 2789
+  },
+  {
+   "unit_id": "u-d2350d56e5be6e25f5364002",
+   "session_id": "s1",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-01T14:00:00+08:00",
+   "ended_at": "2026-06-01T14:00:30+08:00",
+   "day": "2026-06-01",
+   "part": 1,
+   "parts": 1,
+   "cap_stage": "full",
+   "turn_ids": [
+    "s1-016"
+   ],
+   "text": "Conversation dated 2026-06-01 (Claude Code session s1 in /Users/someone/Code/repo, part 2 of that session)\nUSER: Afternoon: zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz …[truncated]\nASSISTANT: Long answer qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq …[truncated]",
+   "schema": "mexplor-unit-v1",
+   "_entries": 2,
+   "_run_config_bytes": 8189
+  },
+  {
+   "unit_id": "u-9c267d6cdcbfae4d9c3c0fbb",
+   "session_id": "s2",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-03T11:00:00+08:00",
+   "ended_at": "2026-06-03T11:00:20+08:00",
+   "day": "2026-06-03",
+   "part": 1,
+   "parts": 1,
+   "cap_stage": "full",
+   "turn_ids": [
+    "s2-101"
+   ],
+   "text": "Conversation dated 2026-06-03 (Claude Code session s2 in /Users/someone/Code/repo, part 1 of that session)\nUSER: Resume the deploy work: d0 d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 d12 d13 d14 d15 d16 d17 d18 d19 d20 d21 d22 d23 d24 d25 d26 d27 d28 d29 d30 d31 d32 d33 d34 d35 d36 d37 d38 d39 d40 d41 d42 d43 d44 d45 d46 d47 d48 d49\nASSISTANT: Resumed. e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20 e21 e22 e23 e24 e25 e26 e27 e28 e29 e30 e31 e32 e33 e34 e35 e36 e37 e38 e39",
+   "schema": "mexplor-unit-v1",
+   "_entries": 2,
+   "_run_config_bytes": 2530
+  },
+  {
+   "unit_id": "u-198d99f92c2922e7b9bc2bd2",
+   "session_id": "s3",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-04T08:00:00+08:00",
+   "ended_at": "2026-06-04T08:02:30+08:00",
+   "day": "2026-06-04",
+   "part": 1,
+   "parts": 5,
+   "cap_stage": "assistant_667+split",
+   "turn_ids": [
+    "s3-001",
+    "s3-003",
+    "s3-005"
+   ],
+   "text": "Conversation dated 2026-06-04 (Claude Code session s3 in /Users/someone/Code/repo/.claude/worktrees/fix-1, part 1 of that session, part 1/5 of that day)\nUSER: step 0 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 0 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 1 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 1 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 2 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 2 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19",
+   "schema": "mexplor-unit-v1",
+   "_entries": 6,
+   "_run_config_bytes": 3273
+  },
+  {
+   "unit_id": "u-21fcf3e29b9c02a9a3e50a8b",
+   "session_id": "s3",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-04T08:03:00+08:00",
+   "ended_at": "2026-06-04T08:05:30+08:00",
+   "day": "2026-06-04",
+   "part": 2,
+   "parts": 5,
+   "cap_stage": "assistant_667+split",
+   "turn_ids": [
+    "s3-007",
+    "s3-009",
+    "s3-011"
+   ],
+   "text": "Conversation dated 2026-06-04 (Claude Code session s3 in /Users/someone/Code/repo/.claude/worktrees/fix-1, part 1 of that session, part 2/5 of that day)\nUSER: step 3 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 3 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 4 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 4 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 5 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 5 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19",
+   "schema": "mexplor-unit-v1",
+   "_entries": 6,
+   "_run_config_bytes": 3273
+  },
+  {
+   "unit_id": "u-08091ef4a11834f26fd70745",
+   "session_id": "s3",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-04T08:06:00+08:00",
+   "ended_at": "2026-06-04T08:08:30+08:00",
+   "day": "2026-06-04",
+   "part": 3,
+   "parts": 5,
+   "cap_stage": "assistant_667+split",
+   "turn_ids": [
+    "s3-013",
+    "s3-015",
+    "s3-017"
+   ],
+   "text": "Conversation dated 2026-06-04 (Claude Code session s3 in /Users/someone/Code/repo/.claude/worktrees/fix-1, part 1 of that session, part 3/5 of that day)\nUSER: step 6 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 6 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 7 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 7 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 8 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 8 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19",
+   "schema": "mexplor-unit-v1",
+   "_entries": 6,
+   "_run_config_bytes": 3273
+  },
+  {
+   "unit_id": "u-3189533ebc8569df50f0b931",
+   "session_id": "s3",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-04T08:09:00+08:00",
+   "ended_at": "2026-06-04T08:11:30+08:00",
+   "day": "2026-06-04",
+   "part": 4,
+   "parts": 5,
+   "cap_stage": "assistant_667+split",
+   "turn_ids": [
+    "s3-019",
+    "s3-021",
+    "s3-023"
+   ],
+   "text": "Conversation dated 2026-06-04 (Claude Code session s3 in /Users/someone/Code/repo/.claude/worktrees/fix-1, part 1 of that session, part 4/5 of that day)\nUSER: step 9 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 9 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 10 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 10 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 11 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 11 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19",
+   "schema": "mexplor-unit-v1",
+   "_entries": 6,
+   "_run_config_bytes": 3277
+  },
+  {
+   "unit_id": "u-76f8ef6d117ee000174c4395",
+   "session_id": "s3",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-04T08:12:00+08:00",
+   "ended_at": "2026-06-04T08:13:30+08:00",
+   "day": "2026-06-04",
+   "part": 5,
+   "parts": 5,
+   "cap_stage": "assistant_667+split",
+   "turn_ids": [
+    "s3-025",
+    "s3-027"
+   ],
+   "text": "Conversation dated 2026-06-04 (Claude Code session s3 in /Users/someone/Code/repo/.claude/worktrees/fix-1, part 1 of that session, part 5/5 of that day)\nUSER: step 12 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 12 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19\nUSER: step 13 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19\nASSISTANT: done 13 t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19",
+   "schema": "mexplor-unit-v1",
+   "_entries": 4,
+   "_run_config_bytes": 2819
+  },
+  {
+   "unit_id": "u-b393253dadc5eb9c62c4398d",
+   "session_id": "s4",
+   "source": "claude-code:cli",
+   "started_at": "2026-06-05T20:00:00+08:00",
+   "ended_at": "2026-06-05T23:00:10+08:00",
+   "day": "2026-06-05",
+   "part": 1,
+   "parts": 1,
+   "cap_stage": "full",
+   "turn_ids": [
+    "s4-001",
+    "s4-003"
+   ],
+   "text": "Conversation dated 2026-06-05 (Claude Code session s4 in /Users/someone, part 1 of that session)\nUSER: hi\nASSISTANT: hello\nUSER: Book a hotel for the trip; h0 h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15 h16 h17 h18 h19 h20 h21 h22 h23 h24 h25 h26 h27 h28 h29 h30 h31 h32 h33 h34 h35 h36 h37 h38 h39 h40 h41 h42 h43 h44 h45 h46 h47 h48 h49\nASSISTANT: Here are options. o0 o1 o2 o3 o4 o5 o6 o7 o8 o9 o10 o11 o12 o13 o14 o15 o16 o17 o18 o19 o20 o21 o22 o23 o24 o25 o26 o27 o28 o29 o30 o31 o32 o33 o34 o35 o36 o37 o38 o39 o40 o41 o42 o43 o44 o45 o46 o47 o48 o49",
+   "schema": "mexplor-unit-v1",
+   "_entries": 4,
+   "_run_config_bytes": 2885
+  }
+ ],
+ "counts": {
+  "bad_json_lines": 5,
+  "human_turns": 25,
+  "user_entries_tool_result": 1,
+  "user_entries_noise_slash_command": 1,
+  "user_entries_noise_meta": 1,
+  "user_entries_noise_compact_summary": 1,
+  "user_entries_noise_wrapper": 1,
+  "user_entries_noise_origin_task-notification": 1,
+  "turns_detached_after_idle_gap": 4,
+  "duplicate_entries_skipped": 4,
+  "env_names_loaded": 3,
+  "exact_values_loaded": 2,
+  "message:api_token": 1,
+  "message:credential_assignment": 1,
+  "message:phone": 1,
+  "segments": 9,
+  "short_segments_dropped": 2,
+  "turns_dropped_short": 2,
+  "short_segments_merged": 1,
+  "segments_still_open": 1
+ },
+ "redaction": [
+  {
+   "input": "token sk-ant-api03-ABCDEFGHIJKLMNOPQRSTUV end",
+   "output": "token [REDACTED:api_token] end",
+   "counts": {
+    "api_token": 1
+   }
+  },
+  {
+   "input": "export OPENAI_API_KEY=abc123def456ghi",
+   "output": "export OPENAI_API_KEY=[REDACTED:credential_assignment]",
+   "counts": {
+    "credential_assignment": 1
+   }
+  },
+  {
+   "input": "密码是 Secret!2026 记住",
+   "output": "密码是 [REDACTED:password] 记住",
+   "counts": {
+    "password": 1
+   }
+  },
+  {
+   "input": "中password=xx should stay",
+   "output": "中password=xx should stay",
+   "counts": {}
+  },
+  {
+   "input": "MY_SERVICE_TOKEN: synthetic-token-value-1234",
+   "output": "MY_SERVICE_TOKEN: [REDACTED:env_named_value]",
+   "counts": {
+    "env_named_value": 1
+   }
+  },
+  {
+   "input": "exact value synthetic-token-value-1234 inside text",
+   "output": "exact value [REDACTED:env_exact:MY_SERVICE_TOKEN] inside text",
+   "counts": {
+    "env_exact": 1
+   }
+  },
+  {
+   "input": "Authorization: Bearer abcdefghijklmnop.qrstuv",
+   "output": "Authorization: [REDACTED:bearer]",
+   "counts": {
+    "bearer": 1
+   }
+  },
+  {
+   "input": "card 4111 1111 1111 1111 and id 11010519491231002X",
+   "output": "card [REDACTED:bank_card] and id [REDACTED:id_card]",
+   "counts": {
+    "id_card": 1,
+    "bank_card": 1
+   }
+  },
+  {
+   "input": "path /Users/someone/Code/repo/AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/file.md stays",
+   "output": "path /Users/someone/Code/repo/AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/file.md stays",
+   "counts": {}
+  },
+  {
+   "input": "opaque aB3dE6gH9jK2mN5pQ8sT1vW4yZ7bC0eF3hI6kL9 goes",
+   "output": "opaque [REDACTED:opaque_secret] goes",
+   "counts": {
+    "opaque_secret": 1
+   }
+  },
+  {
+   "input": "commit 0123456789abcdef0123456789abcdef01234567 stays; hex 0123456789abcdef0123456789abcdef goes",
+   "output": "commit 0123456789abcdef0123456789abcdef01234567 stays; hex [REDACTED:long_hex] goes",
+   "counts": {
+    "long_hex": 1
+   }
+  },
+  {
+   "input": "url https://user:pa55word@example.com/x and jwt eyJhbGciOi.eyJzdWIiOi.c2lnbmF0dXJl",
+   "output": "url https://[REDACTED:url_credentials]example.com/x and jwt [REDACTED:jwt]",
+   "counts": {
+    "jwt": 1,
+    "url_credentials": 1
+   }
+  },
+  {
+   "input": "phone +1 415 555 2671, 010-12345678, version 1.2.3 and date 20260601 10:00",
+   "output": "phone [REDACTED:phone], [REDACTED:phone], version 1.2.3 and date 20260601 10:00",
+   "counts": {
+    "phone": 2
+   }
+  },
+  {
+   "input": "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu\n-----END RSA PRIVATE KEY-----",
+   "output": "[REDACTED:private_key]",
+   "counts": {
+    "private_key": 1
+   }
+  },
+  {
+   "input": "aws key AKIAIOSFODNN7EXAMPLE and session ASIAJEXAMPLEXEXAMPLE in config",
+   "output": "aws key [REDACTED:aws_access_key] and session [REDACTED:aws_access_key] in config",
+   "counts": {
+    "aws_access_key": 2
+   }
+  },
+  {
+   "input": "gitlab glpat-abcdefghijklmnopqrst1 token",
+   "output": "gitlab [REDACTED:api_token] token",
+   "counts": {
+    "api_token": 1
+   }
+  },
+  {
+   "input": "run mysql -h db -uroot -pS3cret! mydb and mysqldump -u x -p'quoted pw' y; mysql -p prompt",
+   "output": "run mysql -h db -uroot -p[REDACTED:password] mydb and mysqldump -u x -p[REDACTED:password] y; mysql -p prompt",
+   "counts": {
+    "password": 2
+   }
+  },
+  {
+   "input": "the password is hunter22 but the password is required stays; passphrase was 'open sesame 9'",
+   "output": "the password is [REDACTED:password] but the password is required stays; passphrase was 'open sesame 9'",
+   "counts": {
+    "password": 1
+   }
+  },
+  {
+   "input": "Authorization: Token abcdef123456 and authorization=\"token 0123456789abcdef\"",
+   "output": "Authorization: [REDACTED:credential_assignment] [REDACTED:bearer] and authorization=\"token [REDACTED:bearer]\"",
+   "counts": {
+    "bearer": 2,
+    "credential_assignment": 1
+   }
+  },
+  {
+   "input": "scheme run aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa+https://u:p4ss@host/x and git+ssh://me:pw@h",
+   "output": "scheme run [REDACTED:long_hex]+https://u:p4ss@host/x and git+ssh://[REDACTED:url_credentials]h",
+   "counts": {
+    "url_credentials": 1,
+    "long_hex": 1
+   }
+  },
+  {
+   "input": "escape \"a\\\"b\" quoted and password=\"x\\",
+   "output": "escape \"a\\\"b\" quoted and password=[REDACTED:credential_assignment]",
+   "counts": {
+    "credential_assignment": 1
+   }
+  }
+ ]
+}

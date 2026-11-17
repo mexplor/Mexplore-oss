@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# touch-edge <src-id> <dst-id> — record a traversal in .access/<src-id>.log.
+# Access bookkeeping lives at graph level (F57, #93), never inside the node
+# dir, so it can never masquerade as an agent attachment. Same line format
+# as always: "<dst> <ISO-8601Z>".
+
+src="$1"; dst="$2"
+if [ -z "${src:-}" ] || [ -z "${dst:-}" ]; then
+  echo "usage: touch-edge <src-id> <dst-id>" >&2
+  exit 1
+fi
+
+# IDs must be exactly 26-char Crockford base32 ULIDs (also blocks path traversal).
+valid_id() { printf '%s' "$1" | grep -qE '^[0-9A-HJKMNP-TV-Z]{26}$'; }
+valid_id "$src" || { echo "error: invalid source Node ID: $src" >&2; exit 1; }
+valid_id "$dst" || { echo "error: invalid target Node ID: $dst" >&2; exit 1; }
+
+GRAPH_ROOT="${GRAPH_ROOT:-./memories}"
+
+link="$GRAPH_ROOT/$src/__edges__/$dst"
+# Require a well-formed edge that actually resolves to a Node directory —
+# dangling or wrong-target edges are not touchable.
+[ -L "$link" ] || { echo "error: no such edge: $src -> $dst" >&2; exit 1; }
+[ "$(readlink "$link")" = "../../$dst" ] || { echo "error: malformed edge target: $src -> $dst" >&2; exit 1; }
+[ -d "$link" ] || { echo "error: edge does not resolve to a Node directory: $src -> $dst" >&2; exit 1; }
+
+ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+mkdir -p "$GRAPH_ROOT/.access" \
+  || { echo "error: failed to create $GRAPH_ROOT/.access" >&2; exit 1; }
+printf '%s %s\n' "$dst" "$ts" >> "$GRAPH_ROOT/.access/$src.log" \
+  || { echo "error: failed to append to access log" >&2; exit 1; }

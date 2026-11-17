@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# node-new "<description>" [type] — create a Node, print its ULID.
+# Builds in a staging dir and atomic-mv into place so a Node is never
+# observable half-created. Optional `type` tags the Node with a taxonomy kind.
+
+desc="$1"
+type="$2"
+if [ -z "${desc:-}" ]; then
+  echo "usage: node-new \"<description>\" [type]" >&2
+  exit 1
+fi
+# description is a single-line frontmatter field — reject embedded newlines.
+case "$desc" in
+  *$'\n'*) echo "error: description must be a single line (no newlines)" >&2; exit 1;;
+esac
+# type is optional; when given it must be one of the taxonomy (F14, #23).
+if [ -n "${type:-}" ]; then
+  case "$type" in
+    identity|preference|decision|gotcha|journal|thread|trivia|handoff) ;;
+    *) echo "error: type must be one of identity|preference|decision|gotcha|journal|thread|trivia|handoff" >&2; exit 1;;
+  esac
+fi
+
+GRAPH_ROOT="${GRAPH_ROOT:-./memories}"
+mkdir -p "$GRAPH_ROOT" || { echo "error: cannot create graph root: $GRAPH_ROOT" >&2; exit 1; }
+
+# --- ULID generation (Crockford base32, 10-char ms time + 16 random chars) ---
+crockford='0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+ulid() {
+  local num out="" i b
+  # 48-bit millisecond timestamp (seconds*1000 is fine — prefix is incidental)
+  num=$(( $(date +%s) * 1000 ))
+  for ((i=0; i<10; i++)); do
+    out="${crockford:num%32:1}$out"
+    num=$((num/32))
+  done
+  # 16 random chars: one byte per char, byte%32 is uniform (256/32=8)
+  for b in $(od -An -N16 -tu1 /dev/urandom); do
+    out="$out${crockford:b%32:1}"
+  done
+  printf '%s' "$out"
+}
+
+id="$(ulid)"
+# Regenerate on the (practically impossible) collision.
+while [ -e "$GRAPH_ROOT/$id" ]; do
+  id="$(ulid)"
+done
+
+created="$(date +%Y-%m-%d)"
+staging="$GRAPH_ROOT/.staging-$$"
+rm -rf "$staging"
+mkdir -p "$staging/__edges__" || { echo "error: cannot create staging dir" >&2; exit 1; }
+
+{
+  printf -- '---\n'
+  printf 'description: %s\n' "$desc"
+  printf 'created: %s\n' "$created"
+  [ -n "${type:-}" ] && printf 'type: %s\n' "$type"
+  printf -- '---\n\n'
+} > "$staging/node.md"
+
+mv "$staging" "$GRAPH_ROOT/$id" || { echo "error: failed to move Node into place" >&2; rm -rf "$staging"; exit 1; }
+
+printf '%s\n' "$id"

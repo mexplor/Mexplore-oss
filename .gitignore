@@ -1,0 +1,25 @@
+# Dependencies and local development state.
+node_modules/
+.dev-install/
+.DS_Store
+.claude/
+__pycache__/
+
+# Credentials: test fixtures use explicitly named synthetic files instead.
+.env
+.env.*
+!.env.example
+!.env.sample
+.npmrc
+*.pem
+*.key
+credentials.json
+
+# User memory and history data never belong in the source tree.
+/memory_fs/memories/
+/memories/
+/graphs/
+/conversations/
+/dossier_export/
+/mexplore-usage/
+/history-exports/

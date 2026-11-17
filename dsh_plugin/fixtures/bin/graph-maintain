@@ -1,0 +1,970 @@
+#!/usr/bin/env node
+// graph-maintain [--apply] [--edge-stale-days N] [--node-stale-days N]
+// Regenerate MAP.md, report integrity issues and prune candidates. Under F54
+// (#90) it is also the edge-hygiene migrator: half-edges (legacy
+// single-direction plain edges, or the residue of a crash between a pair's two
+// symlink() calls) are reported and completed under --apply, and symmetric
+// `relates-to` sidecar lines are moved to their canonical (lexicographically
+// smaller) side. Report-only unless --apply. Holds an exclusive lock so only
+// one runs.
+//
+// An edge is exactly what edge-add and the plugin write: a symlink named by a
+// node id whose target is `../../<id>`. A directory or regular file wearing an
+// id under __edges__/ is not an edge (the plugin's isEdgeEntrySync, the graph
+// panel): it is reported as `non-symlink in __edges__`, never counted, and
+// --apply replaces an EMPTY one that names a live node with the edge symlink
+// (then completes the pair like a half-edge). A non-empty one is left for a
+// person to review: --apply never deletes content.
+//
+// Node rewrite of the original bash script: the bash version forked ~25
+// processes per node, which put a 5k-node graph at 3m35s even after its scans
+// went one-pass. Same CLI, same output format, same on-disk contract.
+'use strict'
+const fs = require('fs')
+const path = require('path')
+
+const LOG_LINE_RE = /^[0-9A-HJKMNP-TV-Z]{26} [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/
+const CREATED_RE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/
+// Optional `type:` taxonomy (F14, #23): absent is fine; when present its value
+// must be one of these.
+const NODE_TYPES = new Set(['identity', 'preference', 'decision', 'gotcha', 'journal', 'thread', 'trivia', 'handoff'])
+// Optional directed-edge taxonomy (F3, #12): a `.edge-types` sidecar line's
+// type must be one of these. Replicated here — this script imports no graph.js.
+const EDGE_TYPES = new Set(['supersedes', 'relates-to', 'follows-from'])
+// Per-Node lock staleness threshold (F68, #132). Replicated here because this
+// standalone script imports neither graph.js nor bin/lib/lock.sh; keep it in
+// sync with STALE_LOCK_MS and NODE_LOCK_STALE_SECONDS.
+const NODE_LOCK_STALE_MS = 30_000
+const NODE_LOCK_RE = /^([0-9A-HJKMNP-TV-Z]{26})\.lock$/
+// Blended MAP ranking weights (F20, #29; degree F84, #194). Hardcoded to the
+// plugin's DEFAULT_RANK_WEIGHTS — graph-maintain has no profile config, and
+// MAP.md must agree with the injected index, which uses these defaults.
+const RANK_WEIGHTS = { traversal: 3, read: 2, recency: 1, degree: 1, recencyWindowDays: 180 }
+
+const isUint = (s) => /^[0-9]+$/.test(s)
+// Description tokenizer for the duplicate-candidate report (F17, #26). Mirrors
+// the plugin's tokenize exactly (lowercase, split on non-alphanumeric/non-CJK)
+// so MAP-side and plugin-side duplicate judgments agree.
+const tokenize = (text) => text.toLowerCase().split(/[^a-z0-9一-鿿]+/i).filter((t) => t.length > 0)
+const NODE_ID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/
+// Whether <src>/__edges__/<name> is an edge: a symlink whose target is exactly
+// ../../<name>. Mirrors the plugin's isEdgeEntrySync, so MAP.md's degree term
+// and the injected index rank alike, and both count the edges the panel shows.
+const isEdgeLink = (src, name) => {
+  if (!NODE_ID_RE.test(name)) return false
+  try { return fs.readlinkSync(path.join(ROOT, src, '__edges__', name)) === `../../${name}` } catch { return false }
+}
+
+let apply = false
+let edgeStaleDays = 90
+let nodeStaleDays = 180
+
+const usage = () => { process.stderr.write('usage: graph-maintain [--apply] [--edge-stale-days N] [--node-stale-days N]\n'); process.exit(1) }
+const args = process.argv.slice(2)
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--apply') { apply = true; continue }
+  if (args[i] === '--edge-stale-days' || args[i] === '--node-stale-days') {
+    const value = args[i + 1] ?? ''
+    if (!isUint(value)) {
+      process.stderr.write(`error: ${args[i]} must be a non-negative integer: ${value}\n`)
+      process.exit(1)
+    }
+    if (args[i] === '--edge-stale-days') edgeStaleDays = Number(value); else nodeStaleDays = Number(value)
+    i++
+    continue
+  }
+  usage()
+}
+
+const ROOT = process.env.GRAPH_ROOT || './memories'
+let rootIsDir = false
+try { rootIsDir = fs.statSync(ROOT).isDirectory() } catch {}
+if (!rootIsDir) {
+  process.stderr.write(`error: graph root does not exist: ${ROOT}\n`)
+  process.exit(1)
+}
+
+// --- exclusive lock (mkdir is atomic); fail fast if held ---
+const lock = path.join(ROOT, '.maintain.lock')
+try {
+  fs.mkdirSync(lock)
+} catch {
+  process.stderr.write(`error: maintenance lock is held: ${lock}\n`)
+  process.exit(1)
+}
+const unlock = () => { try { fs.rmdirSync(lock) } catch {} }
+process.on('exit', unlock)
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => process.exit(1))
+
+const now = Math.floor(Date.now() / 1000)
+const nowMs = now * 1000
+
+// A crashed reader or writer can leave its mkdir lock behind. Fresh locks are
+// live critical sections: do not report or touch them. Stale lock cleanup is
+// advisory crash recovery, not an integrity finding.
+const staleLocks = []
+try {
+  for (const entry of fs.readdirSync(path.join(ROOT, '.locks'), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const match = NODE_LOCK_RE.exec(entry.name)
+    if (match === null || !entry.isDirectory()) continue
+    const lockDir = path.join(ROOT, '.locks', entry.name)
+    try {
+      if (Date.now() - fs.statSync(lockDir).mtimeMs > NODE_LOCK_STALE_MS) {
+        staleLocks.push({ id: match[1], lockDir })
+        console.log(`stale lock: ${match[1]} (--apply removes)`)
+      }
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+    }
+  }
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error
+}
+// Linear recency term in [0,1] for the blended MAP ranking (F20, #29): 1 the
+// day of `latest` (updated else created), decaying to 0 at recencyWindowDays.
+// Replicates the plugin's recencyDecay so MAP and the injected index agree.
+// A bare YYYY-MM-DD is UTC midnight to Date.parse, but both writers stamp the
+// LOCAL calendar day (`date +%F`, and the plugin's today()), so parse it back as
+// one — mirrors the plugin's parseCalendarDate, including the pre-100 year trap.
+const parseCalendarDate = (stamp) => {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(typeof stamp === 'string' ? stamp.trim() : '')
+  if (!parts) return Number.NaN
+  const at = new Date(2000, Number(parts[2]) - 1, Number(parts[3]))
+  at.setFullYear(Number(parts[1]))
+  return at.getTime()
+}
+const recencyDecay = (latest) => {
+  if (!(RANK_WEIGHTS.recencyWindowDays > 0)) return 0
+  const ms = parseCalendarDate(latest)
+  if (Number.isNaN(ms)) return 0
+  const ageDays = (nowMs - ms) / 86400000
+  // Clamp both bounds (mirrors the plugin): a future `latest` must not exceed 1.
+  return Math.max(0, Math.min(1, 1 - ageDays / RANK_WEIGHTS.recencyWindowDays))
+}
+const toEpoch = (ts) => {
+  const ms = Date.parse(ts)
+  if (Number.isNaN(ms)) return undefined
+  // Date.parse rolls impossible dates (Feb 31 -> Mar 3) that GNU date rejected;
+  // require an exact round-trip so invalid timestamps stay ignored.
+  if (new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z') !== ts) return undefined
+  return Math.floor(ms / 1000)
+}
+
+// Value of `key` from the opening `---` frontmatter block (first line must be `---`).
+function fmValue(file, key) {
+  let text
+  try { text = fs.readFileSync(file, 'utf8') } catch { return '' }
+  const lines = text.split('\n')
+  if (lines[0] !== '---') return ''
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i] === '---') break
+    if (lines[i].startsWith(key + ': ')) return lines[i].slice(key.length + 2)
+  }
+  return ''
+}
+
+// Whether `key` appears at all in the frontmatter block, even empty or malformed.
+function fmHas(file, key) {
+  let text
+  try { text = fs.readFileSync(file, 'utf8') } catch { return false }
+  const lines = text.split('\n')
+  if (lines[0] !== '---') return false
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i] === '---') break
+    if (lines[i].startsWith(key + ':')) return true
+  }
+  return false
+}
+
+// Node dirs: every non-dot directory under root, matching the bash `*/` glob
+// (which follows symlinks and skips plain files).
+const nodeDirs = []
+for (const name of fs.readdirSync(ROOT).sort()) {
+  if (name.startsWith('.')) continue
+  try { if (fs.statSync(path.join(ROOT, name)).isDirectory()) nodeDirs.push(name) } catch {}
+}
+
+// --- one-pass precomputation over all logs and all __edges__ dirs ---
+const traversalCount = new Map() // id -> traversals landing on it (dst != owner)
+const readCount = new Map()      // id -> direct reads (F10 self-lines: dst == owner)
+const latestTs = new Map()      // id -> latest ISO timestamp as a target
+const incoming = new Map()      // id -> count of symlinks named id in any __edges__
+const degree = new Map()        // id -> edge symlinks in its OWN __edges__ (F84 rank term; mirrors the plugin's edgeDegreeSync: a directory, file or mispointed link is not an edge)
+const logLines = new Map()      // source id -> its own log lines (for per-edge staleness)
+const legacyLogs = []           // in-node accessed.log files awaiting migration (F57, #93)
+
+// A node's access log lives at .access/<id>.log (F57, #93); a graph written
+// before the move may still hold the legacy in-node accessed.log. Both are
+// read (counts are order-insensitive, so merged history ranks identically),
+// and --apply folds each legacy file into .access/ so the node dir holds only
+// node.md and agent attachments.
+for (const id of nodeDirs) {
+  let log
+  try { log = fs.readFileSync(path.join(ROOT, '.access', `${id}.log`), 'utf8') } catch { log = undefined }
+  const legacy = path.join(ROOT, id, 'accessed.log')
+  let legacyLog
+  try { legacyLog = fs.readFileSync(legacy, 'utf8') } catch { legacyLog = undefined }
+  if (legacyLog !== undefined) legacyLogs.push({ id, legacy })
+  if (log !== undefined || legacyLog !== undefined) {
+    const lines = [...(log ?? '').split('\n'), ...(legacyLog ?? '').split('\n')]
+    logLines.set(id, lines)
+    for (const line of lines) {
+      if (line === '') continue
+      const fields = line.trim().split(/\s+/) // awk field semantics
+      const dst = fields[0] ?? ''
+      const ts = fields[1] ?? ''
+      if (dst === '') continue
+      // Classify against the log's owner (F20, #29): a self-line is a direct
+      // read (F10), anything else is a traversal that landed on `dst`.
+      const bucket = dst === id ? readCount : traversalCount
+      bucket.set(dst, (bucket.get(dst) ?? 0) + 1)
+      if (ts !== '' && (latestTs.get(dst) ?? '') < ts) latestTs.set(dst, ts)
+    }
+  }
+  let entries
+  try { entries = fs.readdirSync(path.join(ROOT, id, '__edges__'), { withFileTypes: true }) } catch { entries = [] }
+  for (const entry of entries) {
+    if (!entry.name.startsWith('.') && entry.isSymbolicLink()) incoming.set(entry.name, (incoming.get(entry.name) ?? 0) + 1)
+  }
+  degree.set(id, entries.filter((entry) => entry.isSymbolicLink() && isEdgeLink(id, entry.name)).length)
+}
+
+const integrity = []
+const report = (msg) => integrity.push(msg)
+
+// ============================ (a) MAP.md ============================
+// Rank = the blended score (F20, #29; F84, #194): traversal*traversals +
+// read*reads + recency*recencyDecay(latest) + degree*edges. Identical formula
+// and default weights to the plugin's rankIndex so MAP.md and the injected
+// index agree. Descending score, ties broken NEWEST first (descending id —
+// F83, #193; matching rankIndex's tie-break).
+// F35 parity (#55): MAP.md is the file-tool discovery surface, and until pass 5
+// it carried neither of the injected section's two state markers — a probe
+// restricted to MAP.md reported three concluded threads as open work. Rows now
+// carry the F24 `[superseded by <id>]` marker (and the matching 0.5 rank
+// penalty, so ordering agrees with the injected index too), and open handoffs
+// are pinned above the rows exactly as F38 pins them above the index.
+const BANNER_SCAN_LINES = 10 // banners are prepended; mirror the plugin's window
+const BANNER_RE = /^Superseded by ([0-9A-HJKMNP-TV-Z]{26}) on /
+const SUPERSEDED_PENALTY = 0.5
+// fmValue against pre-split lines: same semantics, one file read per node.
+const fmOf = (lines, key) => {
+  if (lines[0] !== '---') return ''
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i] === '---') break
+    if (lines[i].startsWith(key + ': ')) return lines[i].slice(key.length + 2)
+  }
+  return ''
+}
+const mapRows = []
+const openHandoffRows = []
+let nodeCount = 0
+for (const id of nodeDirs) {
+  nodeCount++
+  let text = ''
+  try { text = fs.readFileSync(path.join(ROOT, id, 'node.md'), 'utf8') } catch {}
+  const lines = text.split('\n')
+  const desc = fmOf(lines, 'description')
+  if (desc === '') continue // no valid frontmatter description => invisible to the Map
+  const created = fmOf(lines, 'created')
+  const updated = fmOf(lines, 'updated')
+  const latest = updated || created // most recent content date, matching rankIndex
+  // The newest supersede banner in the body's first lines, as supersededBy() reads it.
+  // renderNode writes `---\n\n<body>`, so skip the blank separator line to scan
+  // the same 10 BODY lines the plugin scans.
+  let bodyStart = lines.indexOf('---', 1) + 1
+  if (lines[bodyStart] === '') bodyStart++
+  let supersededBy
+  for (const line of lines.slice(bodyStart, bodyStart + BANNER_SCAN_LINES)) {
+    const found = BANNER_RE.exec(line.trim())
+    if (found) { supersededBy = found[1]; break }
+  }
+  const score = (RANK_WEIGHTS.traversal * (traversalCount.get(id) ?? 0)
+    + RANK_WEIGHTS.read * (readCount.get(id) ?? 0)
+    + RANK_WEIGHTS.recency * recencyDecay(latest)
+    + RANK_WEIGHTS.degree * (degree.get(id) ?? 0)) * (supersededBy === undefined ? 1 : SUPERSEDED_PENALTY)
+  mapRows.push({ score, id, desc, supersededBy })
+  if (fmOf(lines, 'type') === 'handoff' && supersededBy === undefined) openHandoffRows.push({ latest, id, desc })
+}
+// Tie-breaks mirror the plugin's rankIndex exactly: at equal score a LIVE node
+// outranks a superseded one (the 0.5 multiplier cannot reach a score of 0 —
+// codex review of this change), then NEWEST first (descending id, F83 #193 —
+// ascending left the oldest unread nodes in the index and hid the newest).
+mapRows.sort((a, b) => b.score - a.score
+  || ((a.supersededBy !== undefined) - (b.supersededBy !== undefined))
+  || (a.id > b.id ? -1 : a.id < b.id ? 1 : 0))
+// Newest first, matching the plugin's openHandoffs(): updated-else-created, then
+// higher id — on code units, as the plugin's compareIdsNewestFirst does (F83,
+// #193), so the two pinned orders cannot drift apart under a process locale.
+openHandoffRows.sort((a, b) => b.latest.localeCompare(a.latest) || (a.id > b.id ? -1 : a.id < b.id ? 1 : 0))
+const handoffLines = openHandoffRows.length === 0 ? [] : [
+  `Open handoff${openHandoffRows.length === 1 ? '' : 's'} — unfinished work left for the next session; read ${openHandoffRows.length === 1 ? 'it' : 'each'} before anything that could touch ${openHandoffRows.length === 1 ? 'its' : 'their'} thread (close a finished one by superseding it, or by retyping it journal/thread if it should stay as history):`,
+  ...openHandoffRows.map((h) => `  ${h.id} — ${h.desc}`),
+  '',
+]
+const mapTmp = path.join(ROOT, `.MAP.md.tmp-${process.pid}`)
+fs.writeFileSync(mapTmp, handoffLines.map((line) => `${line}\n`).join('')
+  + mapRows.map((r) => `${r.id} — ${r.desc}${r.supersededBy === undefined ? '' : ` [superseded by ${r.supersededBy}]`}\n`).join(''))
+fs.renameSync(mapTmp, path.join(ROOT, 'MAP.md'))
+
+// ==================== (b) Integrity + (c) Prune scan ====================
+// F54 (#90): a plain edge is ONE logical edge stored as TWO symlinks, one in
+// each endpoint's __edges__/. Only `supersedes` and `follows-from` stay
+// one-way. The scan below collects every symlink and sidecar line first;
+// half-edges, prune eligibility (per LOGICAL edge for the symmetric kinds) and
+// sidecar canonicalization are judged after the loop, when both sides of every
+// pair are known.
+const ULID_ONLY = /^[0-9A-HJKMNP-TV-Z]{26}$/
+const DIRECTED_TYPES = new Set(['supersedes', 'follows-from'])
+const pruneEdges = []      // [{ directed?, halves: [{src,dst},…] }] — one entry per LOGICAL edge
+const danglingEdges = []
+const archiveNodes = []
+const slotTaken = new Set()      // "src\tname" for every non-dot entry in any __edges__
+const nonSymlinkEdges = []       // { src, dst, link, rel, kind, repairable } — non-symlink entries in any __edges__
+const nodeDirSet = new Set(nodeDirs)
+const symlinkPairs = new Set()   // unordered "a\tb" over all edge symlinks — the logical edge count
+const liveEdges = []             // { src, dst } for well-formed symlinks whose target node exists
+const sidecarOf = new Map()      // src -> Map(dst -> type) of well-typed sidecar lines
+const edgeThresh = edgeStaleDays * 86400
+const nodeThresh = nodeStaleDays * 86400
+
+for (const id of nodeDirs) {
+  const nodeDir = path.join(ROOT, id)
+
+  // node.md / frontmatter integrity
+  let nodeMdIsFile = false
+  try { nodeMdIsFile = fs.statSync(path.join(nodeDir, 'node.md')).isFile() } catch {}
+  if (!nodeMdIsFile) {
+    report(`missing node.md: ${id}`)
+  } else {
+    if (fmValue(path.join(nodeDir, 'node.md'), 'description') === '') report(`missing/malformed frontmatter description: ${id}/node.md`)
+    if (!CREATED_RE.test(fmValue(path.join(nodeDir, 'node.md'), 'created'))) report(`missing/malformed frontmatter created: ${id}/node.md`)
+    // `updated` is optional (nodes born before F5 and shell-written nodes omit
+    // it); when the key is present at all — even empty or malformed — its value
+    // must validate like `created`. Presence is checked separately because
+    // fmValue returns '' for both a missing key and an empty one.
+    if (fmHas(path.join(nodeDir, 'node.md'), 'updated') && !CREATED_RE.test(fmValue(path.join(nodeDir, 'node.md'), 'updated'))) report(`missing/malformed frontmatter updated: ${id}/node.md`)
+    // `type` is optional; when the key is present at all — even empty — its
+    // value must be one of the taxonomy. Presence is checked separately because
+    // fmValue returns '' for both a missing key and an empty one.
+    if (fmHas(path.join(nodeDir, 'node.md'), 'type') && !NODE_TYPES.has(fmValue(path.join(nodeDir, 'node.md'), 'type'))) report(`invalid frontmatter type: ${id}/node.md`)
+  }
+
+  // __edges__ must exist and be a directory
+  const edgesDir = path.join(nodeDir, '__edges__')
+  let edgesStat
+  try { edgesStat = fs.statSync(edgesDir) } catch { edgesStat = undefined }
+  if (edgesStat === undefined) report(`missing __edges__ directory: ${id}`)
+  else if (!edgesStat.isDirectory()) report(`__edges__ is not a directory: ${id}`)
+
+  // access-log line format (current .access/<id>.log and any legacy in-node file)
+  const lines = logLines.get(id)
+  if (lines !== undefined) {
+    for (const line of lines) {
+      if (line === '') continue
+      if (!LOG_LINE_RE.test(line)) report(`malformed access log line in ${id}: ${line}`)
+    }
+  }
+
+  // edges
+  const edgeNames = new Set() // dst names that have an actual edge symlink here
+  let entries
+  try { entries = fs.readdirSync(edgesDir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) } catch { entries = [] }
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue // the bash glob never matched dotfiles
+    const link = path.join(edgesDir, entry.name)
+    const rel = `${id}/__edges__/${entry.name}`
+    if (!entry.isSymbolicLink()) {
+      // Not an edge (a hand-made `mkdir __edges__/<id>`, or a file). Readers
+      // skip it; here it is classified so --apply can repair the empty ones.
+      let st
+      try { st = fs.lstatSync(link) } catch { continue }
+      slotTaken.add(`${id}\t${entry.name}`)
+      const kind = st.isDirectory() ? 'directory' : st.isFile() ? 'file' : 'special file'
+      let empty = false
+      if (st.isDirectory()) { try { empty = fs.readdirSync(link).length === 0 } catch {} }
+      else if (st.isFile()) empty = st.size === 0
+      const liveDst = NODE_ID_RE.test(entry.name) && entry.name !== id && nodeDirSet.has(entry.name)
+      const repairable = empty && liveDst && kind !== 'special file'
+      const why = repairable ? `--apply replaces it with the edge symlink ../../${entry.name}`
+        : !empty ? 'not empty: review it by hand, --apply leaves it'
+        : !NODE_ID_RE.test(entry.name) ? 'not a node id: review it by hand, --apply leaves it'
+        : entry.name === id ? 'names its own node: review it by hand, --apply leaves it'
+        : kind === 'special file' ? 'review it by hand, --apply leaves it'
+        : 'names no live node: review it by hand, --apply leaves it'
+      report(`non-symlink in __edges__: ${rel} (${empty ? 'empty ' : ''}${kind}; not an edge; ${why})`)
+      nonSymlinkEdges.push({ src: id, dst: entry.name, link, rel, kind, repairable })
+      continue
+    }
+    slotTaken.add(`${id}\t${entry.name}`)
+    edgeNames.add(entry.name)
+    const name = entry.name
+    const tgt = fs.readlinkSync(link)
+
+    let formOk = false
+    if (tgt.startsWith('/')) report(`absolute edge target: ${rel} -> ${tgt}`)
+    else if (tgt.startsWith('../../')) {
+      if (tgt === `../../${name}`) formOk = true
+      else report(`wrong edge target form: ${rel} -> ${tgt}`)
+    } else report(`wrong edge target form: ${rel} -> ${tgt}`)
+    // A symmetric pair is ONE logical edge (F54): count the unordered pair once
+    // so hub/degree figures do not double overnight (24.5% must not read as 49%).
+    // Only well-formed symlinks are edges (isEdgeLink); a mispointed one is
+    // its own finding above, not an edge.
+    if (formOk && NODE_ID_RE.test(name)) symlinkPairs.add(id < name ? `${id}\t${name}` : `${name}\t${id}`)
+
+    // Existence + physical target type. For a well-formed edge the physical
+    // target is exactly ROOT/<name>, so check that node dir directly.
+    if (!fs.existsSync(link)) {
+      report(`dangling edge: ${rel} -> ${tgt}`)
+      danglingEdges.push({ link, rel, src: id, dst: name })
+    } else if (formOk) {
+      let isDir = false
+      try { isDir = fs.statSync(path.join(ROOT, name)).isDirectory() } catch {}
+      if (!isDir) report(`edge points at non-directory: ${rel} -> ${tgt}`)
+      else liveEdges.push({ src: id, dst: name })
+    } else {
+      let isDir = false
+      try { isDir = fs.statSync(link).isDirectory() } catch {}
+      if (!isDir) report(`edge points at non-directory: ${rel} -> ${tgt}`)
+    }
+  }
+
+  // Edge-type sidecar integrity (F3, #12): each `.edge-types` line must name a
+  // known type and an edge that actually exists. Absent sidecar => nothing to
+  // check (fully back-compat). Dotfile, so the edge scan above never saw it.
+  let etText
+  try { etText = fs.readFileSync(path.join(edgesDir, '.edge-types'), 'utf8') } catch { etText = undefined }
+  if (etText !== undefined) {
+    for (const line of etText.split('\n')) {
+      if (line === '') continue
+      const sp = line.indexOf(' ')
+      const dst = sp < 0 ? line : line.slice(0, sp)
+      const type = sp < 0 ? '' : line.slice(sp + 1).trim()
+      const rel = `${id}/__edges__/${dst}`
+      if (!EDGE_TYPES.has(type)) report(`invalid edge type: ${rel} -> ${type}`)
+      if (!edgeNames.has(dst)) report(`edge-type for missing edge: ${rel}`)
+      if (EDGE_TYPES.has(type)) {
+        if (!sidecarOf.has(id)) sidecarOf.set(id, new Map())
+        sidecarOf.get(id).set(dst, type)
+      }
+    }
+  }
+}
+
+// ==================== fork census (F68, #127) ====================
+// Advisory only: two or more live successors superseding the same node are a
+// disagreement for an agent to reconcile, never an --apply mutation.
+const FORK_REPORT_CAP = 10       // bounded like topDuplicates' cap below
+const FORK_SUCCESSORS_SHOWN = 5  // ids named per line before folding the rest into a count
+const predecessorMap = new Map()
+for (const { src, dst } of liveEdges) {
+  // edge-add never writes corrupt self-supersedes; ignore them so they cannot hide a real fork.
+  if (src === dst || !ULID_ONLY.test(src) || !ULID_ONLY.test(dst) || sidecarOf.get(src)?.get(dst) !== 'supersedes') continue
+  if (!predecessorMap.has(dst)) predecessorMap.set(dst, new Set())
+  predecessorMap.get(dst).add(src)
+}
+const supersededIds = new Set(predecessorMap.keys())
+const forkNodes = []
+const forkProtectedEdges = new Set()
+const forkProtectedNodes = new Set()
+for (const [oldId, successors] of [...predecessorMap].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+  const liveSuccessors = [...successors].filter((id) => !supersededIds.has(id)).sort()
+  if (liveSuccessors.length < 2) continue
+  forkNodes.push(oldId)
+  forkProtectedNodes.add(oldId)
+  for (const successor of liveSuccessors) {
+    forkProtectedEdges.add(`${successor}\t${oldId}`)
+    forkProtectedNodes.add(successor)
+  }
+  if (forkNodes.length <= FORK_REPORT_CAP) {
+    const shown = liveSuccessors.slice(0, FORK_SUCCESSORS_SHOWN)
+    const more = liveSuccessors.length - shown.length
+    console.log(`fork: ${oldId} has ${liveSuccessors.length} live successors: ${shown.join(', ')}${more === 0 ? '' : `, and ${more} more`}`)
+  }
+}
+if (forkNodes.length > FORK_REPORT_CAP) console.log(`… ${forkNodes.length - FORK_REPORT_CAP} more forks not shown — see fork_nodes= in the summary line`)
+
+// ==================== (c) edge prune eligibility (F54: per LOGICAL edge) ====================
+// A directed typed edge (`supersedes`/`follows-from`) keeps the old rule: its
+// own source log decides. A symmetric edge — plain or `relates-to` — is ONE
+// logical edge however many symlinks store it, so its staleness is the latest
+// use across BOTH endpoints' logs, and pruning removes BOTH halves; anything
+// else would prune one half only for the half-edge repair to grow it back.
+// No log history on either side still means never auto-pruned.
+const lastUse = (owner, peer) => {
+  let last = ''
+  const lines = logLines.get(owner)
+  if (lines !== undefined) {
+    for (const line of lines) {
+      const fields = line.trim().split(/\s+/) // awk field semantics
+      if (fields[0] === peer && fields[1] !== undefined && last < fields[1]) last = fields[1]
+    }
+  }
+  return last
+}
+const isStale = (lastTs) => {
+  if (lastTs === '') return false
+  const e = toEpoch(lastTs)
+  return e !== undefined && now - e > edgeThresh
+}
+const liveEdgeKeys = new Set(liveEdges.map(({ src, dst }) => `${src}\t${dst}`))
+const consideredPairs = new Set()
+for (const { src, dst } of liveEdges) {
+  const type = sidecarOf.get(src)?.get(dst)
+  if (DIRECTED_TYPES.has(type)) {
+    if (forkProtectedEdges.has(`${src}\t${dst}`)) continue // Forks are agent-reconciled, never auto-pruned (F68, #127)
+    const lastTs = lastUse(src, dst)
+    if (isStale(lastTs)) {
+      console.log(`prune edge (stale): ${src} -> ${dst} (last ${lastTs})`)
+      // directed: the removal must only touch THIS edge's own sidecar line —
+      // the reverse side's line, if any, describes a different (reverse
+      // directed) edge and must survive.
+      pruneEdges.push({ directed: true, halves: [{ src, dst }] })
+    }
+    continue
+  }
+  const [lo, hi] = src < dst ? [src, dst] : [dst, src]
+  const key = `${lo}\t${hi}`
+  if (consideredPairs.has(key)) continue
+  consideredPairs.add(key)
+  // A pair whose OTHER half carries a directed type rides with that directed
+  // edge — the directed rule above governs it; nothing to judge here.
+  if (DIRECTED_TYPES.has(sidecarOf.get(dst)?.get(src))) continue
+  const lastTs = [lastUse(lo, hi), lastUse(hi, lo)].sort().pop()
+  if (isStale(lastTs)) {
+    console.log(`prune edge (stale): ${lo} -> ${hi} (last ${lastTs})`)
+    pruneEdges.push({ halves: [{ src: lo, dst: hi }, { src: hi, dst: lo }].filter(({ src: s, dst: d }) => liveEdgeKeys.has(`${s}\t${d}`)) })
+  }
+}
+
+// ==================== half-edge detection (F54, #90) ====================
+// A symmetric edge missing its reverse symlink is a half-edge: a legacy
+// single-direction edge from before F54, or the residue of a crash between the
+// two symlink() calls. Policy: COMPLETE it under --apply — the intent to link
+// was recorded, and completing is idempotent — rather than remove it (removal
+// would erase a recorded association to fix a bookkeeping defect). Directed
+// typed edges are one-way BY DESIGN and are never symmetrized. Report-only
+// until --apply, and not an integrity issue: a pre-F54 graph is healthy, just
+// not yet migrated — the same posture as the F57 legacy access-log migration.
+const removedHalves = new Set(danglingEdges.map(({ src, dst }) => `${src}\t${dst}`))
+for (const { halves } of pruneEdges) for (const { src, dst } of halves) removedHalves.add(`${src}\t${dst}`)
+const halfEdges = []
+for (const { src, dst } of liveEdges) {
+  if (!ULID_ONLY.test(src) || !ULID_ONLY.test(dst)) continue
+  if (DIRECTED_TYPES.has(sidecarOf.get(src)?.get(dst))) continue
+  if (slotTaken.has(`${dst}\t${src}`)) continue // reverse present (a malformed occupant is its own finding)
+  if (removedHalves.has(`${src}\t${dst}`)) continue // being pruned this run, not completed
+  console.log(`half edge: ${src} -> ${dst} (--apply completes the pair)`)
+  halfEdges.push({ src, dst })
+}
+
+// ==================== sidecar canonicalization (F54, #90) ====================
+// A symmetric `relates-to` line belongs on the LEXICOGRAPHICALLY SMALLER id's
+// side only, so the two sides of a pair can never disagree. A line written
+// before F54 (or by the old edge-add) may sit on the larger side: report it,
+// move it under --apply — unless the canonical slot already records a DIRECTED
+// type for that peer, which is the more specific record and keeps its place.
+const sidecarMoves = []
+for (const [src, types] of sidecarOf) {
+  for (const [dst, type] of types) {
+    if (DIRECTED_TYPES.has(type)) continue
+    // `<=`: a legacy self-edge line (src === dst) has no "other side" to move
+    // to — moving it onto itself would delete it (opus review of this change).
+    if (!ULID_ONLY.test(src) || !ULID_ONLY.test(dst) || src <= dst) continue
+    if (DIRECTED_TYPES.has(sidecarOf.get(dst)?.get(src))) continue
+    if (removedHalves.has(`${src}\t${dst}`) || removedHalves.has(`${dst}\t${src}`)) continue // dies with its edge
+    // Only a line whose edge actually exists moves: a line for a missing edge
+    // is the `edge-type for missing edge` integrity finding's business, and a
+    // live half guarantees the canonical node dir exists to receive the line.
+    if (!liveEdgeKeys.has(`${src}\t${dst}`) && !liveEdgeKeys.has(`${dst}\t${src}`)) continue
+    console.log(`edge-type on non-canonical side: ${src}/__edges__/${dst} (--apply moves it to ${dst})`)
+    sidecarMoves.push({ src, dst, type })
+  }
+}
+
+// (c) node archive candidates: not visited within node-stale-days AND no incoming edges.
+// Both ends of a non-symlink edge entry are kept: --apply may be about to turn
+// it into an edge, and a person may still need to review it.
+const nonSymlinkEnds = new Set(nonSymlinkEdges.flatMap(({ src, dst }) => [src, dst]))
+for (const id of nodeDirs) {
+  if ((incoming.get(id) ?? 0) !== 0) continue
+  if (nonSymlinkEnds.has(id)) continue
+  if (forkProtectedNodes.has(id)) continue // a Fork's predecessor and live successors must never be archived out from under it (F68, #127)
+  const lastTs = latestTs.get(id)
+  let stale = false
+  if (lastTs === undefined) {
+    // never visited: fall back to node.md mtime so a freshly written node
+    // isn't archive-eligible the same day it was created
+    try {
+      stale = now - Math.floor(fs.statSync(path.join(ROOT, id, 'node.md')).mtimeMs / 1000) > nodeThresh
+    } catch (error) {
+      stale = error.code === 'ENOENT' // no node.md at all: junk dir, archivable; other stat errors: keep
+    }
+  } else {
+    const e = toEpoch(lastTs)
+    if (e !== undefined && now - e > nodeThresh) stale = true
+  }
+  if (stale) {
+    console.log(`archive node (stale, no incoming): ${id}`)
+    archiveNodes.push(id)
+  }
+}
+
+// ---- integrity findings ----
+for (const msg of integrity) console.log(`integrity: ${msg}`)
+
+// ==================== legacy access-log migration (F57, #93) ====================
+// Advisory only until --apply. Archived nodes carried their in-node log into
+// .archive/ under the old layout; sweep those too so a restore never brings a
+// legacy file back into a live node dir.
+try {
+  for (const name of fs.readdirSync(path.join(ROOT, '.archive')).sort()) {
+    if (name.startsWith('.')) continue
+    const legacy = path.join(ROOT, '.archive', name, 'accessed.log')
+    if (fs.existsSync(legacy)) legacyLogs.push({ id: name, legacy })
+  }
+} catch {}
+for (const { id, legacy } of legacyLogs) {
+  console.log(`legacy access log: ${path.relative(ROOT, legacy)} (--apply folds it into .access/${id}.log)`)
+}
+
+// ==================== duplicate-candidate report (F17, #26) ====================
+// Advisory only — does NOT count toward integrity_issues. Among LIVE nodes,
+// two are duplicate candidates when their descriptions share enough tokens:
+// 2*shared >= min(|A tokens|, |B tokens|), the same rule the plugin's F6
+// `similar` uses. Report the top 10 by shared-token count and write them (top
+// pairs, `<a> <b>` per line) to <root>/.duplicates for the plugin to surface.
+const descTokenSets = []
+for (const id of nodeDirs) {
+  const desc = fmValue(path.join(ROOT, id, 'node.md'), 'description')
+  if (desc === '') continue
+  const tokens = new Set(tokenize(desc))
+  if (tokens.size === 0) continue // no description vocabulary => nothing to dedupe on
+  descTokenSets.push({ id, tokens })
+}
+// Inverted index token -> node indices (ascending, since nodeDirs is sorted),
+// so only nodes that actually share a token are ever compared.
+const byToken = new Map()
+descTokenSets.forEach((node, i) => {
+  for (const token of node.tokens) {
+    if (!byToken.has(token)) byToken.set(token, [])
+    byToken.get(token).push(i)
+  }
+})
+// Two complementary detectors, both bounded, merged into `dupMap` ("<a> <b>",
+// a<b ids -> shared score; the stronger score wins per pair):
+//
+// (1) RARE-token overlap for near-duplicates. A token in more than
+//     TOKEN_POSTING_CAP descriptions is skipped outright — it is
+//     non-discriminating boilerplate (pairing on it floods the report with
+//     false positives) AND its k·(k-1)/2 cross-product is the 5k/20k-scale
+//     memory blowup (findings #8/#13). A genuine near-duplicate shares
+//     DISTINCTIVE (rare) tokens, so this keeps the useful signal cheaply.
+//     ponytail: 64 mirrors the plugin's SCAN_TOKEN_CAP; MAX_PAIRS is a hard
+//     backstop so no pathological token mix can grow the pair map without bound.
+// (2) EXACT token-set clusters. Nodes whose descriptions carry the identical
+//     token set are duplicates regardless of token frequency — this catches a
+//     large all-identical cluster (e.g. 65 boilerplate descriptions) that (1)
+//     skips, in O(n) via a hash, as g-1 hub-and-spoke pairs per cluster (linear,
+//     never a cross-product).
+const TOKEN_POSTING_CAP = 64
+const MAX_PAIRS = 200000
+const pairShared = new Map() // "i,j" (i<j) -> count of shared rare tokens
+let pairsTruncated = false
+outer:
+for (const indices of byToken.values()) {
+  if (indices.length > TOKEN_POSTING_CAP) continue
+  for (let x = 0; x < indices.length; x++) {
+    for (let y = x + 1; y < indices.length; y++) {
+      if (pairShared.size >= MAX_PAIRS && !pairShared.has(`${indices[x]},${indices[y]}`)) { pairsTruncated = true; break outer }
+      const key = `${indices[x]},${indices[y]}`
+      pairShared.set(key, (pairShared.get(key) ?? 0) + 1)
+    }
+  }
+}
+if (pairsTruncated) console.log(`duplicate scan truncated at ${MAX_PAIRS} candidate pairs — report may be partial`)
+
+const dupMap = new Map()
+const addPair = (ai, bi, shared) => {
+  const a = descTokenSets[ai].id
+  const b = descTokenSets[bi].id
+  const key = a < b ? `${a} ${b}` : `${b} ${a}`
+  if ((dupMap.get(key) ?? 0) < shared) dupMap.set(key, shared)
+}
+// Rare tokens only DISCOVER candidate pairs (cheap, bounded, no boilerplate-only
+// pairs); score each on its FULL token intersection — including any common
+// tokens the two share — so a near-duplicate carrying both boilerplate and
+// distinctive vocab (e.g. "...authentication failure alpha" vs "...beta") is not
+// missed just because its rare-token overlap alone falls under the threshold.
+for (const key of pairShared.keys()) {
+  const [i, j] = key.split(',').map(Number)
+  const a = descTokenSets[i].tokens
+  const b = descTokenSets[j].tokens
+  let full = 0
+  for (const t of a) if (b.has(t)) full++
+  if (2 * full >= Math.min(a.size, b.size)) addPair(i, j, full)
+}
+const byTokenSet = new Map()
+descTokenSets.forEach((node, i) => {
+  const key = [...node.tokens].sort().join(' ')
+  if (!byTokenSet.has(key)) byTokenSet.set(key, [])
+  byTokenSet.get(key).push(i)
+})
+for (const members of byTokenSet.values()) {
+  if (members.length < 2) continue
+  // Identical descriptions share every token, so score them by that full count
+  // — a hub-and-spoke fan from the first member keeps this linear.
+  for (let k = 1; k < members.length; k++) addPair(members[0], members[k], descTokenSets[members[0]].tokens.size)
+}
+const dupCandidates = [...dupMap.entries()].map(([key, shared]) => {
+  const [a, b] = key.split(' ')
+  return { a, b, shared }
+})
+// Most-overlapping first; ids ascending as a stable tie-break.
+dupCandidates.sort((x, y) => y.shared - x.shared || (x.a < y.a ? -1 : x.a > y.a ? 1 : 0) || (x.b < y.b ? -1 : x.b > y.b ? 1 : 0))
+const topDuplicates = dupCandidates.slice(0, 10)
+for (const c of topDuplicates) console.log(`duplicate candidate: ${c.a} ~ ${c.b} (${c.shared} shared desc tokens)`)
+const dupFile = path.join(ROOT, '.duplicates')
+if (topDuplicates.length > 0) {
+  const dupTmp = path.join(ROOT, `.duplicates.tmp-${process.pid}`)
+  fs.writeFileSync(dupTmp, topDuplicates.map((c) => `${c.a} ${c.b}\n`).join(''))
+  fs.renameSync(dupTmp, dupFile)
+} else {
+  try { fs.unlinkSync(dupFile) } catch {} // none this run: clear any stale advisory
+}
+
+// ==================== (d) apply mutations ====================
+if (apply) {
+  // Remove stale per-Node lock directories before other repairs. ENOENT is a
+  // successful outcome: another writer may have stolen and released one after
+  // this run's scan. Re-check staleness immediately before removal because a
+  // live writer may have stolen and recreated the lock since that scan. Any
+  // other failure is reported and leaves the lock intact.
+  for (const { id, lockDir } of staleLocks) {
+    try {
+      if (Date.now() - fs.statSync(lockDir).mtimeMs <= NODE_LOCK_STALE_MS) continue
+      fs.rmdirSync(lockDir)
+      console.log(`removed stale lock: ${id}`)
+    } catch (error) {
+      if (error.code !== 'ENOENT') process.stderr.write(`error: could not remove stale lock: ${id}\n`)
+    }
+  }
+  // Migrate legacy access logs first — before the archive step below renames
+  // any node dir out from under a recorded legacy path. Idempotent and
+  // retry-safe on purpose: merge current + legacy lines, DEDUPE exact
+  // duplicates, stage into a temp file and rename() over the target, THEN
+  // unlink the legacy file. A crash or failed unlink between rename and
+  // unlink leaves both files holding the same records, and the re-run's
+  // dedupe converges to identical content — a plain append-then-unlink would
+  // re-append them and permanently inflate counts, F20 ranking and staleness.
+  // Exact-line dedupe can collapse two legitimate same-second accesses to the
+  // same dst, and a writer appending to either file inside the merge window
+  // can lose that one line — both accepted under the same single-user race
+  // posture as ledger #9 (maintenance holds its own lock; writers do not).
+  if (legacyLogs.length > 0) fs.mkdirSync(path.join(ROOT, '.access'), { recursive: true })
+  for (const { id, legacy } of legacyLogs) {
+    try {
+      const target = path.join(ROOT, '.access', `${id}.log`)
+      let current = ''
+      try { current = fs.readFileSync(target, 'utf8') } catch {}
+      const seen = new Set()
+      const merged = []
+      for (const line of [...current.split('\n'), ...fs.readFileSync(legacy, 'utf8').split('\n')]) {
+        if (line === '' || seen.has(line)) continue
+        seen.add(line)
+        merged.push(line)
+      }
+      const tmp = path.join(ROOT, '.access', `.${id}.log.tmp-${process.pid}`)
+      fs.writeFileSync(tmp, merged.map((line) => `${line}\n`).join(''))
+      fs.renameSync(tmp, target)
+      fs.unlinkSync(legacy)
+      console.log(`migrated access log: ${path.relative(ROOT, legacy)} -> .access/${id}.log`)
+    } catch { process.stderr.write(`error: could not migrate access log: ${path.relative(ROOT, legacy)}\n`) }
+  }
+  const rmF = (link) => { // rm -f semantics: already-gone counts as removed
+    try { fs.unlinkSync(link); return true } catch (error) { return error.code === 'ENOENT' }
+  }
+  // Removing an edge symlink must also drop its `.edge-types` line (F3, #12),
+  // else the next run would falsely report `edge-type for missing edge`. Rewrite
+  // the sidecar without the dst line, deleting the file if it becomes empty.
+  const dropEdgeType = (src, dst) => {
+    const etFile = path.join(ROOT, src, '__edges__', '.edge-types')
+    let text
+    try { text = fs.readFileSync(etFile, 'utf8') } catch { return } // no sidecar: nothing to drop
+    const kept = text.split('\n').filter((line) => {
+      if (line === '') return false
+      const sp = line.indexOf(' ')
+      return (sp < 0 ? line : line.slice(0, sp)) !== dst
+    })
+    if (kept.length === 0) {
+      try { fs.unlinkSync(etFile) } catch {}
+      return
+    }
+    const tmp = `${etFile}.tmp-${process.pid}`
+    fs.writeFileSync(tmp, kept.map((line) => `${line}\n`).join(''))
+    fs.renameSync(tmp, etFile)
+  }
+  // Pruning a symmetric edge removes BOTH halves and the type line on either
+  // side (F54) — a surviving half would read as a crash residue and be grown
+  // back by the half-edge repair below. A DIRECTED prune touches only its own
+  // symlink and its own sidecar line: the reverse side's line, if one exists,
+  // records a separate reverse directed edge and must survive.
+  for (const { directed, halves } of pruneEdges) {
+    for (const { src, dst } of halves) {
+      const rel = `${src}/__edges__/${dst}`
+      if (rmF(path.join(ROOT, src, '__edges__', dst))) {
+        console.log(`removed edge: ${rel}`)
+        dropEdgeType(src, dst)
+        if (!directed) dropEdgeType(dst, src)
+      } else process.stderr.write(`error: could not remove edge: ${rel}\n`)
+    }
+  }
+  // Only the OWN side's sidecar line goes with a dangling edge: when the
+  // target node is truly gone its sidecar is gone with it, and when the
+  // "dangling" entry is merely a malformed hand-written link (relative target
+  // without ../../) the peer's line describes a real, live edge that must
+  // survive (opus review of this change).
+  for (const { link, rel, src, dst } of danglingEdges) {
+    if (rmF(link)) { console.log(`removed dangling edge: ${rel}`); dropEdgeType(src, dst) }
+    else process.stderr.write(`error: could not remove dangling edge: ${rel}\n`)
+  }
+  // Complete half-edges (F54): create the missing reverse symlink. Skipped for
+  // an endpoint this same run archives — the fresh symlink would dangle the
+  // moment the node dir moves. EEXIST tolerated: a writer may have completed
+  // the pair since the scan.
+  const archiving = new Set(archiveNodes)
+  for (const { src, dst } of halfEdges) {
+    if (archiving.has(src) || archiving.has(dst)) continue
+    try {
+      fs.mkdirSync(path.join(ROOT, dst, '__edges__'), { recursive: true })
+      fs.symlinkSync(`../../${src}`, path.join(ROOT, dst, '__edges__', src))
+      console.log(`completed half edge: ${dst} -> ${src}`)
+    } catch (error) {
+      if (error.code === 'EEXIST') console.log(`completed half edge: ${dst} -> ${src}`)
+      else process.stderr.write(`error: could not complete half edge: ${dst} -> ${src}\n`)
+    }
+  }
+  // Repair non-symlink edge entries: an EMPTY directory or EMPTY file named by
+  // a live node id becomes the edge symlink ../../<dst>. Never deletes
+  // content: rmdir refuses a directory that filled since the scan (ENOTEMPTY),
+  // and a file is re-checked empty and then replaced by rename(), so a reader
+  // never sees the slot vanish. Anything else stays for review.
+  const repairedEdges = []
+  for (const { src, dst, link, rel, kind, repairable } of nonSymlinkEdges) {
+    if (!repairable || archiving.has(src) || archiving.has(dst)) continue
+    try {
+      if (kind === 'directory') {
+        fs.rmdirSync(link)
+        fs.symlinkSync(`../../${dst}`, link)
+      } else {
+        const st = fs.lstatSync(link)
+        if (!st.isFile() || st.size !== 0) throw new Error('changed since the scan')
+        const tmp = path.join(path.dirname(link), `.${dst}.tmp-${process.pid}`)
+        fs.symlinkSync(`../../${dst}`, tmp)
+        try { fs.renameSync(tmp, link) } catch (error) { try { fs.unlinkSync(tmp) } catch {} throw error }
+      }
+      console.log(`repaired edge entry: ${rel} -> ../../${dst}`)
+      repairedEdges.push({ src, dst })
+    } catch (error) {
+      let fixed = false
+      try { fixed = fs.readlinkSync(link) === `../../${dst}` } catch {} // a writer made the edge meanwhile
+      if (fixed) repairedEdges.push({ src, dst })
+      else process.stderr.write(`error: could not repair edge entry: ${rel} (${error.code ?? error.message}); left as is\n`)
+    }
+  }
+  // A repaired plain edge is made symmetric exactly like a half-edge (ADR-0012):
+  // the missing reverse symlink is created; a directed type stays one-way. A
+  // reverse slot holding anything else is left (it is its own finding, and an
+  // empty one was just repaired above).
+  for (const { src, dst } of repairedEdges) {
+    if (DIRECTED_TYPES.has(sidecarOf.get(src)?.get(dst))) continue
+    const reverse = path.join(ROOT, dst, '__edges__', src)
+    try {
+      fs.lstatSync(reverse)
+      continue
+    } catch (error) {
+      if (error.code !== 'ENOENT') continue
+    }
+    try {
+      fs.mkdirSync(path.join(ROOT, dst, '__edges__'), { recursive: true })
+      fs.symlinkSync(`../../${src}`, reverse)
+      console.log(`completed half edge: ${dst} -> ${src}`)
+    } catch (error) {
+      if (error.code === 'EEXIST') console.log(`completed half edge: ${dst} -> ${src}`)
+      else process.stderr.write(`error: could not complete half edge: ${dst} -> ${src}\n`)
+    }
+  }
+  // Move non-canonical `relates-to` sidecar lines to the smaller id's side
+  // (F54). Runs after half-edge completion, so the canonical side already
+  // holds the symlink the moved line describes. The insert refuses to clobber
+  // an existing different line (last-resort guard; the scan already skipped
+  // directed conflicts), in which case both lines stay where they were.
+  const addSidecarLine = (owner, dst, type) => {
+    const etFile = path.join(ROOT, owner, '__edges__', '.edge-types')
+    let text = ''
+    try { text = fs.readFileSync(etFile, 'utf8') } catch {}
+    const map = new Map()
+    for (const line of text.split('\n')) {
+      if (line === '') continue
+      const sp = line.indexOf(' ')
+      if (sp < 0) continue
+      map.set(line.slice(0, sp), line.slice(sp + 1))
+    }
+    if (map.get(dst) === type) return true // already canonical
+    if (map.has(dst)) return false // occupied by a different record — leave both sides untouched
+    map.set(dst, type)
+    const tmp = `${etFile}.tmp-${process.pid}`
+    fs.writeFileSync(tmp, [...map.keys()].sort().map((k) => `${k} ${map.get(k)}`).join('\n') + '\n')
+    fs.renameSync(tmp, etFile)
+    return true
+  }
+  for (const { src, dst, type } of sidecarMoves) {
+    // Same skip as half-edge completion: when an endpoint archives in this
+    // run, the completion that would give the canonical side its symlink is
+    // skipped too, so moving the line would orphan it on the live endpoint
+    // (`edge-type for missing edge` next run — codex review of #119). The
+    // line rides into the archive with its node instead.
+    if (archiving.has(src) || archiving.has(dst)) continue
+    try {
+      if (addSidecarLine(dst, src, type)) {
+        dropEdgeType(src, dst)
+        console.log(`moved edge-type to canonical side: ${dst}/__edges__/.edge-types <- ${src} ${type}`)
+      }
+    } catch { process.stderr.write(`error: could not move edge-type: ${src}/__edges__/${dst}\n`) }
+  }
+  if (archiveNodes.length > 0) {
+    fs.mkdirSync(path.join(ROOT, '.archive'), { recursive: true })
+    for (const id of archiveNodes) {
+      try { fs.renameSync(path.join(ROOT, id), path.join(ROOT, '.archive', id)); console.log(`archived node: ${id}`) }
+      catch { process.stderr.write(`error: could not archive node: ${id}\n`) }
+    }
+  }
+}
+
+// Size of the shadow graph: nodes currently sitting in .archive/ (invisible to
+// search/read unless a session opts in). Counted after --apply so a run that
+// just archived nodes reports the new total. Distinct from `archive_nodes`,
+// which counts what this run flagged/moved.
+let archivedTotal = 0
+try {
+  for (const name of fs.readdirSync(path.join(ROOT, '.archive'))) {
+    if (name.startsWith('.')) continue
+    try { if (fs.statSync(path.join(ROOT, '.archive', name)).isDirectory()) archivedTotal++ } catch {}
+  }
+} catch {}
+
+// `edges=` counts LOGICAL edges (F54): a symmetric pair of symlinks is one
+// edge, so degree figures cannot double-count — but two OPPOSITE directed
+// edges between the same nodes (a↔b both `supersedes`) are two edges, told
+// apart by both sides' sidecar lines. `half_edges=` are migration candidates
+// (legacy single-direction edges, crash residue), completed under --apply;
+// `prune_edges=` likewise counts logical edges flagged.
+let logicalEdges = 0
+for (const key of symlinkPairs) {
+  const [a, b] = key.split('\t')
+  const abDirected = DIRECTED_TYPES.has(sidecarOf.get(a)?.get(b))
+  const baDirected = DIRECTED_TYPES.has(sidecarOf.get(b)?.get(a))
+  logicalEdges += abDirected && baDirected ? 2 : 1
+}
+console.log(`summary: nodes=${nodeCount} edges=${logicalEdges} integrity_issues=${integrity.length} half_edges=${halfEdges.length} prune_edges=${pruneEdges.length} dangling_edges=${danglingEdges.length} non_symlink_edges=${nonSymlinkEdges.length} archive_nodes=${archiveNodes.length} archived_total=${archivedTotal} stale_locks=${staleLocks.length} fork_nodes=${forkNodes.length}`)

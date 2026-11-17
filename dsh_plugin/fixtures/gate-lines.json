@@ -1,0 +1,606 @@
+{
+ "README": "Wholly synthetic fixture lines for offline advisory-gate regression tests. Each entry has a source label, line text, and the exact sorted expected fires set. Optional prior text supplies the first operand of the labeled-figure contradiction check; optional turn text supplies the conversation evidence for quote coverage. Equal figures, ambiguous labels, explicit corrections, pending work, unsupported events, and quoted assertions retain their expected silent or firing behavior.",
+ "lines": [
+  {
+   "source": "v2 turn-086",
+   "line": "待交付：2029-08-11那周工作周报.md（K加网络+商户入网+关键决策点）",
+   "fires": [],
+   "why": "anchored 「<date>那周」 — the date is the user's own, 那周 is the phrase's tail"
+  },
+  {
+   "source": "v2 turn-098",
+   "line": "下一步：查找2029-08-11那周录音，整理含风险点+协调资源的报告并交付。",
+   "fires": [],
+   "why": "anchored 「<date>那周」"
+  },
+  {
+   "source": "v2 turn-108",
+   "line": "下一步：查找2029-07-28那周相关录音/记录，整理周报并交付。",
+   "fires": [],
+   "why": "anchored 「<date>那周」"
+  },
+  {
+   "source": "v2 turn-115",
+   "line": "待交付：2029-09-22那周会议报告.md（ORBA续约+阿根廷议题，讨论要点+各方立场+最终决策）",
+   "fires": [],
+   "why": "anchored 「<date>那周」"
+  },
+  {
+   "source": "v2 turn-115",
+   "line": "用户于2030-08-20要求整理2029年9月22日那周的会议报告，涵盖：",
+   "fires": [],
+   "why": "anchored 「<date>日那周」 — 日 ends the date, not a vague half"
+  },
+  {
+   "source": "v2 turn-117",
+   "line": "下一步：需检索2029-09-22那周录音（大约9月22~26日范围），整理ORBA续约和阿根廷议题内容，每个议题标注会议日期和时长，生成.md文件。",
+   "fires": [],
+   "why": "anchored 「<date>那周」"
+  },
+  {
+   "source": "v2 turn-116",
+   "line": "- 2029-09-22那周会议报告：**从未生成**，下次用户催问时应立即着手检索录音并生成报告，不得再敷衍。",
+   "fires": [],
+   "why": "anchored 「<date>那周」; also a conditional-future rule (下次…应)"
+  },
+  {
+   "source": "v2 turn-119",
+   "line": "已关闭：2029-09-22那周会议报告——用户主动放弃（2030-08-28）",
+   "fires": [],
+   "why": "anchored 「<date>那周」"
+  },
+  {
+   "source": "v1 handoff",
+   "line": "1. **立即实际检索2029-09-22那周（ORBA续约+阿根廷）录音并整理 .md**——用户已多次追问，不得再虚报进度；",
+   "fires": [],
+   "why": "anchored 「<date>那周」 in the v1 graph"
+  },
+  {
+   "source": "v1 handoff",
+   "line": "4. 等待用户提供2029-08-11那周（K加网络+商户入网）的原始素材；",
+   "fires": [],
+   "why": "anchored 「<date>那周」 in the v1 graph"
+  },
+  {
+   "source": "issue #152 synthetic anchored-date example",
+   "line": "银行方将于**2030-09-02 起那周**（下周）给出方案",
+   "fires": [
+    "minted_precision"
+   ],
+   "why": "the vague half is parenthesised and not date-adjacent — a resolution, not an anchor"
+  },
+  {
+   "source": "v2 turn-094",
+   "line": "- 该提醒实际上**未被设置**。用户若再次提起，应如实告知助手无法设置系统提醒，并建议用户通过手机日历/闹钟/提醒事项等工具自行设置。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "accepted miss (#164): a rule written as a contingency draws the advisory — five vocabulary definitions of \"conditional\" each hid a real report, so the gate keeps recall and eats this"
+  },
+  {
+   "source": "v2 turn-095",
+   "line": "- 用户若再次提起，应如实告知助手无法设置系统提醒，建议用户通过手机日历/闹钟/提醒事项等工具自行设置每天 17:30 的游泳馆提醒。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "accepted miss (#164): a rule written as a contingency draws the advisory — five vocabulary definitions of \"conditional\" each hid a real report, so the gate keeps recall and eats this"
+  },
+  {
+   "source": "v2 turn-008 (flagged)",
+   "line": "用户询问录音里提到的这类小店铺特点，助手从录音检索后汇总如下：",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the transcript supports it, the line quotes nothing — F71's documented no-transcript blindness, no cheap fix"
+  },
+  {
+   "source": "v2 turn-008 (the writer's repair)",
+   "line": "用户问「那当时说这种店还有什么特点吗」，助手检索录音后汇总：",
+   "fires": [],
+   "why": "the same claim rewritten with the user's words in quotes — the fix the advisory asks for"
+  },
+  {
+   "source": "v1 turn-006 (ledger finding 55)",
+   "line": "2030-08-19对话中，助手在没有真实材料的情况下捏造了一份会议纪要（四个练习环节+两个校验步骤），被用户发现纠正。这是严重错误，切勿重复。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the invented episode"
+  },
+  {
+   "source": "v1 turn-006 neighbour",
+   "line": "**当前状态：** 阻塞——缺少真实会议记录原材料，且存在助手捏造内容的风险记录。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the neighbour node the invented episode corrupted"
+  },
+  {
+   "source": "v1 turn-086",
+   "line": "2030-08-27：用户请求整理2029年8月11日那周（K加网络+商户入网）工作周报 .md。助手检索后发现记忆图中无该周相关录音/会议记录，无法生成，已告知用户需提供原始素材。产物未交付。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "search-and-decline narrative; carries 需 but no conditional marker"
+  },
+  {
+   "source": "v1 turn-096",
+   "line": "2030-08-27：用户再次请求整理2029年10月13日那一周关于 Relay 平台和星岛仓储演练的综合分析报告。助手检索后无相关录音，未生成报告。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "search-and-decline narrative; carries 再次 but no modal beside it"
+  },
+  {
+   "source": "v2 ordinary",
+   "line": "- DEMO1已排期、样例本周开始投；DEMO2本周讲；DEMO4（Workshop）等Northcard演练对齐后再讲",
+   "fires": [],
+   "why": "week words with no date on the clause; also the id-abuts-week shape (PRD2本周)"
+  },
+  {
+   "source": "v2 ordinary",
+   "line": "- 秋季演练第二周（推断：约 2029-10-13 那周）是 deadline，需逼 K加 给出承诺",
+   "fires": [],
+   "why": "the space-separated anchored form — silenced by the 推断 inference marker, not by the lookbehind"
+  },
+  {
+   "source": "v1 ordinary",
+   "line": "MA测算逻辑：若将EP原来付给华星通的预算平移，估算我方可获收入水位。",
+   "fires": [],
+   "why": "conditional + modal, but no assistant-behaviour claim to silence"
+  },
+  {
+   "source": "v2 ordinary",
+   "line": "- \"每周五下午三点客户需求清单\"：**未设置任何定时任务**，助手无自动调度能力。若用户再提，应如实告知，建议用户届时手动触发，或由用户自行设置提醒在周五三点来找助手整理。",
+   "fires": [],
+   "why": "assistant line written as a conditional rule"
+  },
+  {
+   "source": "v1 ordinary",
+   "line": "该提醒从未被实际创建。如用户再次提及，需告知需要通过系统工具或第三方应用手动设置，同时说明当前时间偏好为每天17:30。",
+   "fires": [],
+   "why": "the v1 wording of the same rule"
+  },
+  {
+   "source": "v2 ordinary",
+   "line": "助手多次均承诺\"好了第一时间告诉你\"，但三轮对话结束时 .md 文件均未交付。",
+   "fires": [],
+   "why": "round 11's F71-compliant rewrite: the claim quotes the turn"
+  },
+  {
+   "source": "v2 ordinary",
+   "line": "2030-08-28：补录用户第1轮原话（询问原话，助手从记忆复述，未重新检索录音）。",
+   "fires": [],
+   "why": "actor and event sit in different clauses"
+  },
+  {
+   "source": "v2 ordinary",
+   "line": "**状态：** 已交付，用户已确认保存。2030-08-28用户再次索取原文，助手从记忆图调出全文回传（re-confirmed）。",
+   "fires": [],
+   "why": "a dated status line carrying 再次 and no event verb"
+  },
+  {
+   "source": "codex review of #166 (synthetic)",
+   "line": "助手再次检索后，将结果告知了用户。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "将 X 告知了 Y is the disposal construction, not a future modal — a completed claim, and 了 marks it done"
+  },
+  {
+   "source": "codex review of #166 (synthetic)",
+   "line": "助手再次检索后，将结果告知用户。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the same disposal construction with no completion mark — why 将 left the modal list entirely"
+  },
+  {
+   "source": "codex review of #166 (synthetic)",
+   "line": "助手再次检索了用户需要的录音，未找到并已告知用户。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "需要 as a NOUN inside 用户需要的录音, beside 再次 — 了/已 keep the completed claim eligible"
+  },
+  {
+   "source": "codex review of #166 round 2 (synthetic)",
+   "line": "助手再次搜索用户需要的录音，未找到相关记录。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "需要的 is a noun modifier and 未找到 is a completed outcome — a report, not a rule, with no 了/已 on it"
+  },
+  {
+   "source": "codex review of #166 round 2 (synthetic)",
+   "line": "助手再次搜索用户需要的录音并告知用户。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the same noun modifier with no completion mark at all — this one is held by 需要(?!的) alone"
+  },
+  {
+   "source": "codex review of #166 round 3 (synthetic)",
+   "line": "助手再次搜索相应记录并告知用户。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "应 inside 相应 is not a modal — but the fix is that 再次 is not a conditional, so the silencer never reaches this line"
+  },
+  {
+   "source": "codex review of #166 round 3 (synthetic)",
+   "line": "助手再次检索录音库并告知用户。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the ordinary accurate status line: searching again is a frequency, not a condition"
+  },
+  {
+   "source": "codex review of #166 round 3 (synthetic)",
+   "line": "- 待交付：**2029-09-22**那周会议报告.md（ORBA续约）",
+   "fires": [],
+   "why": "markdown emphasis between the date and 那周 — stripped before the adjacency test, so the anchored form stays silent"
+  },
+  {
+   "source": "codex review of #166 round 4 (synthetic)",
+   "line": "The assistant searched the archive to determine if the customer will renew and informed the user.",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "if+will reads as a conditional-future pair, but the English event verbs are past-tense by construction — a finished report, never a rule"
+  },
+  {
+   "source": "codex review of #166 round 4 (synthetic)",
+   "line": "If the user asks next time, the assistant will need to tell them the reminder was never set.",
+   "fires": [],
+   "why": "the English twin of turns 94/95: a rule for a future turn, no completed event verb; stays silent only because `tell` is not in the past-tense event vocabulary — not a conditional test"
+  },
+  {
+   "source": "codex review of #166 round 6 (synthetic)",
+   "line": "暂不发布 T_B_D 字段。",
+   "fires": [],
+   "why": "a literal identifier must not be rewritten into a gate keyword — stripping every `*`/`_` turned T_B_D into the qualifier TBD, so the markdown tolerance lives in the date lookbehind instead"
+  },
+  {
+   "source": "v3 turn-006",
+   "line": "报告已生成并念给用户，后续用户要求将行动计划\"预计完成时间\"改为从2030-08-19起算的具体日期，已更新并写回文档。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "round-12 fabrication: the artifact is the subject and no actor appears anywhere — 助手 is absent, so the F71 subject branch never saw it"
+  },
+  {
+   "source": "v3 turn-006",
+   "line": "物流业务与仓储会议汇总报告——已交付并写回文档（2030-08-19）",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the same fabrication in the DESCRIPTION, which is the retrieval surface the whole graph reads"
+  },
+  {
+   "source": "v3 turn-006",
+   "line": "**状态：已完成并交付（2030-08-19）**",
+   "fires": [],
+   "why": "accepted miss: a bare status field names no artifact, and every delivered node in this corpus writes one"
+  },
+  {
+   "source": "v2 turn-021",
+   "line": "已交付：物流+仓储会议汇总报告（2029-08-04那一周），风控8条+KYC2条，.md格式",
+   "fires": [],
+   "why": "the ledger label — completion BEFORE the artifact with a colon between, which is a status row and not a claim"
+  },
+  {
+   "source": "v3 turn-086",
+   "line": "助手回应：已接单，说会整理好告知，但对话到此结束，报告未实际生成或交付。",
+   "fires": [],
+   "why": "the correct line the same build wrote: a NON-event, and 已 never reaches the completion verb"
+  },
+  {
+   "source": "v3 turn-104",
+   "line": "开放——不知道后续子墨是否已提供数据、报告是否已完成。",
+   "fires": [],
+   "why": "an open question about a deliverable is not a claim it landed — the one false positive the artifact branch drew over 2,301 replay lines"
+  },
+  {
+   "source": "v1 turn-072",
+   "line": "DEMO ETF分析报告已交付（2030-04-17请求，本轮补充vs标普500对比）",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "uncited delivery claim the subject branch missed — supported by the turn, but nothing in the graph can check it"
+  },
+  {
+   "source": "v1 turn-072",
+   "line": "报告已交付，对比部分已补充。本线程已完成。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "same shape, second instance in the same node"
+  },
+  {
+   "source": "synthetic (F71.1)",
+   "line": "W41 周报已交付,artifact_id=300417582904613376,录音 file_id=c7a910eb。",
+   "fires": [],
+   "why": "an identifier IS provenance (F55): the claim names the artifact it delivered"
+  },
+  {
+   "source": "synthetic (F71.1)",
+   "line": "W41 周报已交付并归档。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the same claim after a blind rewrite dropped its ids — nothing behind it now"
+  },
+  {
+   "source": "synthetic (F71.1)",
+   "line": "下一步：查找2029-08-11那周录音，整理周报并交付。",
+   "fires": [],
+   "why": "a plan, not a completion — no 已 anywhere on the clause"
+  },
+  {
+   "source": "synthetic (F71.1)",
+   "line": "用户偏好：交付产物用 Markdown 写成 .md 文件，不要 PDF/Word/PPT",
+   "fires": [],
+   "why": "a preference naming a file type; the deontic list also covers it"
+  },
+  {
+   "source": "synthetic (F71.1)",
+   "line": "The report has been delivered to the user.",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the English half of the artifact-subject branch"
+  },
+  {
+   "source": "self-review (F71.1)",
+   "line": "周报告警规则已更新",
+   "fires": [],
+   "why": "substring trap: 报告 sits inside 上报/告警 text, and Chinese has no word boundary — the gap window breaks the match"
+  },
+  {
+   "source": "self-review (F71.1)",
+   "line": "文档案管理系统已完成上线",
+   "fires": [],
+   "why": "substring trap: 文档 inside 文档案; the completion is six chars away, past the window"
+  },
+  {
+   "source": "self-review (F71.1)",
+   "line": "这份 summary has been updated by the user themselves",
+   "fires": [],
+   "why": "another actor is named, so this reports on the user and is not an unattributed claim"
+  },
+  {
+   "source": "self-review (F71.1)",
+   "line": "文档已由用户更新",
+   "fires": [],
+   "why": "the Chinese half of the same guard: 由用户 names the actor"
+  },
+  {
+   "source": "sonnet review (#167)",
+   "line": "附件中的报告已交付。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the nearest artifact before the completion, not the leftmost: 附件 sits earlier in the clause and used to swallow the claim"
+  },
+  {
+   "source": "sonnet review (#167)",
+   "line": "周报里的报告已交付。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "same shape with 周报 as the distractor — both are entries in the noun list"
+  },
+  {
+   "source": "sonnet review (#167)",
+   "line": "用户说「报告已交付，已归档」。",
+   "fires": [],
+   "why": "a quoted utterance holding clause punctuation: the mask keeps the quote whole across the clause split"
+  },
+  {
+   "source": "sonnet review (#167)",
+   "line": "用户说「报告已交付」。",
+   "fires": [],
+   "why": "the same quote without internal punctuation, which was already silent — the pair isolates the split as the cause"
+  },
+  {
+   "source": "sonnet review 2 (#167)",
+   "line": "报告已交付\"w42.md\"",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "a quoted FILENAME is not provenance (carriesCitation excludes it) — the mask must not turn it into one"
+  },
+  {
+   "source": "sonnet review 2 (#167)",
+   "line": "\"the assistant already searched logs.txt\"",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the claim lives inside its own quote: masking must not hide the words the actor branch reads"
+  },
+  {
+   "source": "sonnet review 2 (#167)",
+   "line": "无关内容已完成占位后附件已发送。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "an unrelated completion opens the clause and the real pair sits behind it — every done occurrence has to be tried"
+  },
+  {
+   "source": "sonnet review 2 (#167)",
+   "line": "助手已检索日志，\"MAP\"文件核对无误。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "control: a quote elsewhere on the line, claim unquoted — unchanged by the mask"
+  },
+  {
+   "source": "v4 turn-086 → turn-087",
+   "prior": "- 前10大持仓占 37.42%，Demo7合计约46%，SAMPLE单只占6.25%，科技板块权重58.25%",
+   "line": "- 风险：PE约28x（均值22x）、前十大持仓约62%、利率反复、AI泡沫担忧",
+   "fires": [
+    "contradicted_figures"
+   ],
+   "why": "figure displaced: 前十大 normalizes to 前10大, the stored 37.42% is nowhere in the write, and the fabricated 62% would overwrite it"
+  },
+  {
+   "source": "v2 …DEMO02 → v4 …DEMO03",
+   "prior": "- **动因**：演练优化，前三四轮 300kW 模拟负载跑不满（DCR比DCQ少约18个练习槽位）",
+   "line": "DCR downsize（缩容）决策+机房详细费用拆解：300kW→160kW，五年省约90~120万美元（2029-10-17录音）",
+   "fires": [],
+   "why": "figure revision: the labels never collide (前三四年 vs 机房详细费用拆解), the arrow chains 300kW→160kW into one ambiguous pair, and the old value is named — a legitimate correction must stay writable"
+  },
+  {
+   "source": "v1 …DEMO04 → v2 …DEMO05",
+   "prior": "- 演练预估：均值 TPS 7，峰值 TPS 9（有人当场质疑\"均值7峰值9，听起来不合理\"）",
+   "line": "- 演练预估：均值 TPS 7，峰值 TPS 9（有人当场说\"均值7峰值9，这听起来不是很合理\"）",
+   "fires": [],
+   "why": "figure revision: a bare count carries no unit, so TPS 7/峰值9 never extracts — unitless digits are where the noise lives"
+  },
+  {
+   "source": "v3 …DEMO06",
+   "prior": "- **DEMO（Training permit）**：登记即可练习，享有 **2.75% 积分**，**不能兑奖**，不涉及真实交易。物流演练采用这条路线——启用一个空白的 DEMO 练习空间。",
+   "line": "- 2030-04-17：用户追问\"积分能兑到多少\"，已确认 2.75%；演练未细说是哪个积分池或封顶额度。",
+   "fires": [],
+   "why": "figure revision: the follow-up restates the SAME 2.75%, a restated value is never a contradiction, and the bare two-char 享有 sits below the name floor besides"
+  },
+  {
+   "source": "v1 …DEMO07 → v2 …DEMO02",
+   "prior": "- 机房租赁5年合计约 **860万美元**",
+   "line": "- **机房租赁合计**：约 **860万美元**（5年，双AZ）",
+   "fires": [],
+   "why": "figure revision: rephrased label, identical value — and had the labels matched, the equal value keeps it silent"
+  },
+  {
+   "source": "issue #173 escape form",
+   "prior": "- 前10大持仓占 37.42%，科技板块权重58.25%",
+   "line": "- 前十大持仓 37.42% → 62%（2030-04-17 更正）",
+   "fires": [],
+   "why": "the explicit-correction escape: the write names the stored value, which is what an honest correction looks like"
+  },
+  {
+   "source": "v4 turn-006 (round 13)",
+   "turn": "先念给我听听你写的内容",
+   "line": "用户说「先念给我听听你写的内容」，助手念出了《物流×仓储业务对接会议纪要》全文（日期2030-08-19），涵盖联合演练方案、样例共享机制、课程发布节奏、行动事项表。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the quote-satisfied fabrication: the writer answered the advisory by quoting the user's REQUEST and kept the invented delivery — the turn names no 纪要, so the quote covers nothing the line claims"
+  },
+  {
+   "source": "v4 turn-006 (round 13, no turn)",
+   "line": "用户说「先念给我听听你写的内容」，助手念出了《物流×仓储业务对接会议纪要》全文（日期2030-08-19），涵盖联合演练方案、样例共享机制、课程发布节奏、行动事项表。",
+   "fires": [],
+   "why": "no turn, no change: without the second operand the line reads exactly as F71.1 left it — the coverage test cannot guess, and this is why the acceptance is a replay round"
+  },
+  {
+   "source": "synthetic (F71.2)",
+   "turn": "把物流×仓储会议纪要念给我听",
+   "line": "用户说「把物流×仓储会议纪要念给我听」，助手念出了《物流×仓储业务对接会议纪要》全文。",
+   "fires": [],
+   "why": "the same shape when the quote does cover the claim: the turn names 纪要, so the citation stands and the line stays silent"
+  },
+  {
+   "source": "synthetic (F71.2)",
+   "turn": "报告已交付，已归档",
+   "line": "用户说「报告已交付，已归档」。",
+   "fires": [],
+   "why": "the quoted utterance from sonnet review, now with its turn: 报告 is in the turn, so coverage adds nothing and the clause-split fix still holds"
+  },
+  {
+   "source": "self-review (F71.2)",
+   "turn": "帮我出个周报",
+   "line": "用户「帮我出个周报」的要求已完成：助手已生成周报并写回 report.md",
+   "fires": [],
+   "why": "one named artifact in the turn is enough, tested where the quote and the claim share a clause: requiring every one turned the writer naming the file it wrote (report.md) into a fire"
+  },
+  {
+   "source": "self-review (F71.2)",
+   "turn": "查一下上周的录音",
+   "line": "用户说「查一下上周的录音」，助手检索录音库后告知用户。",
+   "fires": [],
+   "why": "a claim naming no artifact has nothing to check coverage against, so its quote vouches exactly as before — the actor branch's line scope is untouched"
+  },
+  {
+   "source": "v4 turn-006 (round 13)",
+   "line": "助手念出了《物流×仓储业务对接会议纪要》全文，用户未提出修改。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "reading a deliverable aloud is the delivery event in this corpus: 念给/念出 join the actor branch's vocabulary, which is why the line above can be reached at all"
+  },
+  {
+   "source": "self-review (F71.2)",
+   "line": "助手指出概念出现偏差，已与用户确认。",
+   "fires": [],
+   "why": "substring trap on the new verb: 念 is the tail of 概念 and 出 opens the next word — the lookbehind is what stops 概念出现 reading as a delivery"
+  },
+  {
+   "source": "self-review (F71.2)",
+   "line": "助手从理念出发梳理了三条要点。",
+   "fires": [],
+   "why": "the same trap through 理念出发; 念完 is left out of the list entirely for the 概念完整 twin"
+  },
+  {
+   "source": "fable review (F71.2)",
+   "line": "助手表示很想念给他讲课的老师。",
+   "fires": [],
+   "why": "the lookbehind must cover every character that takes 念 as a noun tail — 想念 was named in the comment and missing from the class, so this drew a false fire"
+  },
+  {
+   "source": "fable review (F71.2)",
+   "line": "助手指出这种观念给用户带来了误解。",
+   "fires": [],
+   "why": "the same gap through 观念; false FIRES are the expensive direction for an advisory, so this class is closed rather than sampled"
+  },
+  {
+   "source": "fable review (F71.2)",
+   "turn": "the reporter called me",
+   "line": "The user said \"take a look\", and the assistant searched the logs and delivered the report.",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the turn side reads by the same rule as the claim side: a bare includes() found `report` inside `reporter` and let an unrelated turn vouch for the delivery"
+  },
+  {
+   "source": "fable review (F71.2)",
+   "turn": "把 todo.md 给我",
+   "line": "用户说「先看看」，助手检索日志后已生成 summary.md。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "an extension match is widened to the filename token: under the bare `.md` anchor every attachment vouched for every other one"
+  },
+  {
+   "source": "codex #189 (F71.2)",
+   "turn": "把计划.md 给我",
+   "line": "用户说「先看看」，助手检索日志后已生成总结.md。",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the head capture must be Unicode: \\w is ASCII, so 总结.md and 计划.md both collapsed to the bare .md the widening exists to prevent"
+  },
+  {
+   "source": "codex #189 (F71.2)",
+   "turn": "发我总结.md",
+   "line": "用户说「先看看」，助手检索日志后已生成总结.md。",
+   "fires": [],
+   "why": "the same file named in a turn that bounds it differently: a CJK stem has no left edge, so the anchors agree on the last two characters rather than whole"
+  },
+  {
+   "source": "codex #189 (F71.2)",
+   "line": "The assistant read the report aloud.",
+   "fires": [
+    "unsourced_assertions"
+   ],
+   "why": "the English arm takes an object between the verb and the particle — `read out`/`read it aloud` matched while the ordinary phrasing did not"
+  },
+  {
+   "source": "codex #189 (F71.2)",
+   "line": "The assistant read the docs before answering.",
+   "fires": [],
+   "why": "the particle stays REQUIRED: bare `read` must never start matching, which is the fail-toward-silence contract this vocabulary keeps"
+  }
+ ]
+}

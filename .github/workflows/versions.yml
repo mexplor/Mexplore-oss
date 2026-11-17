@@ -1,0 +1,32 @@
+name: versions
+
+# The Mexplore packages (dsh_plugin, opencode_mexplore, mexplore_ui) must share
+# a major version (major.minor while on 0.x). See scripts/check-versions.mjs.
+on:
+  pull_request:
+    paths:
+      - '*/package.json'
+      - 'scripts/check-versions.mjs'
+      - '.github/workflows/versions.yml'
+  push:
+    branches: [main, 'release/**']
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check version lines
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            node scripts/check-versions.mjs --tag "${GITHUB_REF_NAME}"
+          else
+            node scripts/check-versions.mjs
+          fi

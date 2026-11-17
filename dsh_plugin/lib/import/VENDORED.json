@@ -1,0 +1,17 @@
+{
+  "source": "mexplore_import/src",
+  "generatedBy": "scripts/sync-vendored.mjs",
+  "files": {
+    "cards.js": "347c2e626150624ecafcd6242c966ccc64b19e79c4e10b82e6145ced4021c718",
+    "convert.js": "6324a04e06acc3780141e7911fd2d99a85013d3b4cdd69478035954f3ff4e197",
+    "estimate.js": "20ac972bf195301c0231760e906ca1f53892dafec0faeb15c5b9b5b43edda4e8",
+    "index.js": "726f5d44a0ca67bcf6d57e5dd497ce79ed79a70698c5d6b907b062f4388c2120",
+    "job.js": "937cb8021ce04c93acbd324fb27fadd87503594a6ce6d732f871108649c54847",
+    "redact.js": "ba709008b7223eae989e5b2fe17962ff58703efaa807c2b2f23147174db21b02",
+    "request.js": "af962444c4fb125e6e299404ef029ac885717fd86b5010d7d209502d2b06e873",
+    "scope.js": "a842c0e9f6f2185cc229f725b58f2e275cd772f9dfbe7171f3860f459f2105bc",
+    "source.js": "dace2b9af50bbbdd75981e3d07648800e58c79dbd7867be3b271767b89821c5a",
+    "texts.js": "baff8ee22ee57cf57a169d98e227378b7082ff06701056ff222c9fb82bef8759",
+    "tools.js": "b9fe2ad8eed1794917db8a82687dd2f3143f913a8033bc72326f66c451d81d43"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "probe-plugin",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  }
+}

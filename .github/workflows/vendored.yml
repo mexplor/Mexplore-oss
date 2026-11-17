@@ -1,0 +1,26 @@
+name: vendored
+
+# mexplore_graph/ and mexplore_import/ are the only sources of the graph engine and the history
+# import core; dsh_plugin carries generated copies of them (DSH installs dsh_plugin from git without a
+# build step). This fails when a copy differs from its source, when a copy has no source, or when a
+# source imports anything but node: modules. See scripts/sync-vendored.mjs.
+on:
+  pull_request:
+  push:
+    branches: [main, 'release/**']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generated copies match their sources
+        run: node scripts/sync-vendored.mjs --check
+      - name: Import core tests
+        run: node --test mexplore_import/test/*.test.js

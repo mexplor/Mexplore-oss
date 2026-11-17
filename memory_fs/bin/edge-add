@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# edge-add <src-id> <dst-id> [type] — connect two Nodes.
+#
+# A plain edge is ONE logical edge stored as TWO symlinks (F54, #90):
+# src/__edges__/<dst> -> ../../<dst> AND dst/__edges__/<src> -> ../../<src>.
+# Adding an edge whose reverse already exists completes the pair — idempotent
+# in both directions, so the reverse-duplicate class cannot be written at all.
+#
+# The optional `type` records a relationship in the `.edge-types` sidecar
+# (F3, #12). `supersedes` and `follows-from` keep their DIRECTION: a single
+# one-way symlink plus a sidecar line on the source. `relates-to` is symmetric
+# like a plain edge; its sidecar line lives on the LEXICOGRAPHICALLY SMALLER
+# id's side only (one canonical home, so the two sides can never disagree).
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/lock.sh"
+
+src="$1"; dst="$2"; type="$3"
+if [ -z "${src:-}" ] || [ -z "${dst:-}" ]; then
+  echo "usage: edge-add <src-id> <dst-id> [type]" >&2
+  exit 1
+fi
+
+# IDs must be exactly 26-char Crockford base32 ULIDs — this also blocks path
+# traversal (slashes, "..") from ever reaching a filesystem path below.
+valid_id() { printf '%s' "$1" | grep -qE '^[0-9A-HJKMNP-TV-Z]{26}$'; }
+valid_id "$src" || { echo "error: invalid source Node ID: $src" >&2; exit 1; }
+valid_id "$dst" || { echo "error: invalid target Node ID: $dst" >&2; exit 1; }
+[ "$src" != "$dst" ] || { echo "error: an edge from a Node to itself carries no information" >&2; exit 1; }
+
+# Validate the type up front (before any mutation), mirroring the JS layer, so a
+# bad type never leaves a symlink with no matching sidecar line behind it.
+directed=0
+if [ -n "${type:-}" ]; then
+  case "$type" in
+    supersedes|follows-from) directed=1;;
+    relates-to) ;;
+    *) echo "error: edge type must be one of supersedes|relates-to|follows-from" >&2; exit 1;;
+  esac
+fi
+
+GRAPH_ROOT="${GRAPH_ROOT:-./memories}"
+
+[ -d "$GRAPH_ROOT/$src" ] || { echo "error: source Node does not exist: $src" >&2; exit 1; }
+[ -d "$GRAPH_ROOT/$dst" ] || { echo "error: target Node does not exist: $dst" >&2; exit 1; }
+
+# Ensure one half — <from>/__edges__/<to> -> ../../<to> — exists and is correct.
+# A correct existing half is a no-op; a wrong target or a non-symlink occupant
+# is an error rather than a silent fix.
+make_half() {
+  local from="$1" to="$2"
+  local edges="$GRAPH_ROOT/$from/__edges__"
+  mkdir -p "$edges"
+  local link="$edges/$to" want="../../$to"
+  if [ -L "$link" ]; then
+    local have
+    have="$(readlink "$link")"
+    if [ "$have" != "$want" ]; then
+      echo "error: edge exists with wrong target: $link -> $have (want $want)" >&2
+      return 1
+    fi
+  elif [ -e "$link" ]; then
+    echo "error: non-symlink already occupies edge slot: $link" >&2
+    return 1
+  else
+    ln -s "$want" "$link" || { echo "error: failed to create edge symlink: $link" >&2; return 1; }
+  fi
+  return 0
+}
+
+# Forward half first, so an interruption leaves the caller's own stated
+# direction on disk; graph-maintain detects the half-edge and completes it.
+make_half "$src" "$dst" || exit 1
+if [ "$directed" -eq 0 ]; then
+  make_half "$dst" "$src" || exit 1
+fi
+
+# Upsert the edge type in the .edge-types sidecar: drop any prior line for this
+# dst, append the new mapping, and rewrite sorted (matching the JS writer's
+# stable layout) via a staged temp file so a reader never sees it half-written.
+if [ -n "${type:-}" ]; then
+  if [ "$directed" -eq 1 ]; then
+    et_src="$src"; et_dst="$dst"
+    lock_ids=("$et_src" "$dst")
+  else
+    # Symmetric type: canonical home is the lexicographically smaller id — in
+    # BYTE order (LC_ALL=C), matching the JS writer's code-unit `<` exactly, so
+    # no locale collation can ever put the line on the other side.
+    if [ "$(printf '%s\n%s\n' "$src" "$dst" | LC_ALL=C sort | head -n1)" = "$src" ]; then
+      et_src="$src"; et_dst="$dst"
+    else
+      et_src="$dst"; et_dst="$src"
+    fi
+    lock_ids=("$et_src")
+  fi
+
+  # Directed retyping may rewrite both endpoint sidecars; otherwise only the
+  # canonical owner is locked. Symlink creation above deliberately stays
+  # lock-free. The EXIT trap is bash's release-on-error equivalent to finally.
+  lock_node "$GRAPH_ROOT" "${lock_ids[@]}" || exit 1
+  trap 'unlock_node "$GRAPH_ROOT" "${lock_ids[@]}"' EXIT
+
+  if [ "$directed" -eq 1 ]; then
+    # A directed type REPLACES any symmetric record of the same pair: the
+    # canonical relates-to line may live on the OTHER endpoint (the smaller
+    # id) — leaving it there would let the two views disagree (codex review
+    # of #119). Only the symmetric line goes; a directed line over there is a
+    # separate reverse directed edge. Mirrors the JS writer exactly.
+    ret="$GRAPH_ROOT/$dst/__edges__/.edge-types"
+    if [ -f "$ret" ] && grep -q "^$src relates-to$" "$ret"; then
+      tmp2="$GRAPH_ROOT/$dst/__edges__/..edge-types.tmp-rev-$$"
+      grep -v "^$src relates-to$" "$ret" > "$tmp2" || true
+      if [ -s "$tmp2" ]; then
+        mv "$tmp2" "$ret" || { echo "error: failed to rewrite edge types: $ret" >&2; rm -f "$tmp2"; exit 1; }
+      else
+        rm -f "$tmp2" "$ret"
+      fi
+    fi
+  else
+    # A directed line already in the canonical slot is the more specific record
+    # (e.g. et_src already supersedes et_dst) — leave it; the pair is connected
+    # either way. Mirrors the JS writer exactly.
+    if grep -qE "^$et_dst (supersedes|follows-from)$" "$GRAPH_ROOT/$et_src/__edges__/.edge-types" 2>/dev/null; then
+      exit 0
+    fi
+  fi
+  et="$GRAPH_ROOT/$et_src/__edges__/.edge-types"
+  tmp="$GRAPH_ROOT/$et_src/__edges__/..edge-types.tmp-$$"
+  # LC_ALL=C so the byte/code-unit ordering matches the JS writer's `.sort()`,
+  # keeping the two writers' sidecar layout exactly interchangeable.
+  { [ -f "$et" ] && grep -v "^$et_dst " "$et"; printf '%s %s\n' "$et_dst" "$type"; } | LC_ALL=C sort > "$tmp"
+  mv "$tmp" "$et" || { echo "error: failed to write edge type: $et" >&2; rm -f "$tmp"; exit 1; }
+fi

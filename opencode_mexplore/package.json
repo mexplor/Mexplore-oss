@@ -1,0 +1,28 @@
+{
+  "name": "mexplore",
+  "version": "0.3.1",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "mexplore memory as an OpenCode V2 plugin: one throwaway child session per call, graph tools only inside it",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tui": "./src/tui.ts",
+    "./rpc": "./src/rpc.ts"
+  },
+  "scripts": {
+    "setup": "bun scripts/dev-install.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dsh-mexplore": "git+https://github.com/mexplor/Mexplore-oss.git#release/oss-initial::path:dsh_plugin",
+    "mexplore-ui": "git+https://github.com/mexplor/Mexplore-oss.git#release/oss-initial::path:mexplore_ui"
+  },
+  "devDependencies": {
+    "@opencode/plugin": "2.2.5",
+    "@types/bun": "1.3.14",
+    "solid-js": "1.9.18",
+    "typescript": "7.0.2"
+  }
+}

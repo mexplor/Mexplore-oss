@@ -1,0 +1,1 @@
+{"meta": {"title": "Mexplore · Memory agent", "description": "Gives the main agent one memory_agent tool. Each call runs a separate agent that has only the memory tools and returns an answer with checked citations. Turn off the direct memory tools first."}}
