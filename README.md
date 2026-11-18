@@ -2,6 +2,8 @@
 
 Persistent memory for **DeepSeek Harness (DSH)** and **OpenCode**, stored as a filesystem graph. A memory is a directory containing Markdown and attachments; relationships are symlinks. Both plugins use the same graph engine and on-disk format.
 
+**Topics:** `memory` · `opencode` · `opencode-plugin` · `deepseek` · `deepseek-harness` · `persistent-memory` · `memory-plugin`
+
 ## Install / 安装
 
 ### DeepSeek Harness
